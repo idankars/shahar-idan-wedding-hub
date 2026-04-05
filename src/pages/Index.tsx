@@ -4,13 +4,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import WeddingHeader from '@/components/WeddingHeader';
 import WeddingNav from '@/components/WeddingNav';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useSupabaseTable } from '@/hooks/useSupabaseTable';
 import type { Guest, Vendor } from '@/types/wedding';
 
 const Index = () => {
   const navigate = useNavigate();
-  const [guests] = useLocalStorage<Guest[]>('wedding-guests', []);
-  const [vendors] = useLocalStorage<Vendor[]>('wedding-vendors', []);
+  const [guests] = useSupabaseTable<Guest>('guests');
+  const [vendors] = useSupabaseTable<Vendor>('vendors');
 
   const confirmedGuests = guests.filter((g) => g.status === 'מאשר');
   const totalAttending = confirmedGuests.reduce((sum, g) => sum + g.numberOfGuests, 0);

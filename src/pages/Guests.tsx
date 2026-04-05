@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import WeddingHeader from '@/components/WeddingHeader';
 import WeddingNav from '@/components/WeddingNav';
 import FileImport from '@/components/FileImport';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useSupabaseTable } from '@/hooks/useSupabaseTable';
 import type { Guest } from '@/types/wedding';
 
 const emptyGuest: Omit<Guest, 'id'> = {
@@ -47,7 +47,7 @@ const parseGuestRow = (row: Record<string, string>): Omit<Guest, 'id'> | null =>
 };
 
 const Guests = () => {
-  const [guests, setGuests] = useLocalStorage<Guest[]>('wedding-guests', []);
+  const [guests, setGuests] = useSupabaseTable<Guest>('guests');
   const [form, setForm] = useState<Omit<Guest, 'id'>>(emptyGuest);
   const [editId, setEditId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);

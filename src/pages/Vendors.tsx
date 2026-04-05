@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import WeddingHeader from '@/components/WeddingHeader';
 import WeddingNav from '@/components/WeddingNav';
 import FileImport from '@/components/FileImport';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useSupabaseTable } from '@/hooks/useSupabaseTable';
 import type { Vendor } from '@/types/wedding';
 import { vendorTypes } from '@/types/wedding';
 
@@ -50,7 +50,7 @@ const parseVendorRow = (row: Record<string, string>): Omit<Vendor, 'id'> | null 
 };
 
 const Vendors = () => {
-  const [vendors, setVendors] = useLocalStorage<Vendor[]>('wedding-vendors', []);
+  const [vendors, setVendors] = useSupabaseTable<Vendor>('vendors');
   const [form, setForm] = useState<Omit<Vendor, 'id'>>(emptyVendor);
   const [editId, setEditId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
