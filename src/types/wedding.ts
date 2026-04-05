@@ -14,6 +14,7 @@ export interface Vendor {
   type: string;
   phone: string;
   price: number;
+  paid: number;
   status: 'בתהליך' | 'סגור' | 'שולם' | 'בוטל';
   notes: string;
 }

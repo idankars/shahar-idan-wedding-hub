@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, Edit2, Search } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, Wallet, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,14 +15,14 @@ import type { Vendor } from '@/types/wedding';
 import { vendorTypes } from '@/types/wedding';
 
 const emptyVendor: Omit<Vendor, 'id'> = {
-  name: '', type: 'צלם', phone: '', price: 0, status: 'בתהליך', notes: '',
+  name: '', type: 'צלם', phone: '', price: 0, paid: 0, status: 'בתהליך', notes: '',
 };
 
 const statusColors: Record<Vendor['status'], string> = {
-  'בתהליך': 'bg-muted text-muted-foreground',
-  'סגור': 'bg-gold-light text-foreground',
-  'שולם': 'bg-secondary text-secondary-foreground',
-  'בוטל': 'bg-accent text-accent-foreground',
+  'בתהליך': 'bg-amber-100 text-amber-700 border-amber-200',
+  'סגור': 'bg-blue-100 text-blue-700 border-blue-200',
+  'שולם': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'בוטל': 'bg-red-100 text-red-700 border-red-200',
 };
 
 const vendorColumnMapping = {
@@ -30,6 +30,7 @@ const vendorColumnMapping = {
   type: ['סוג', 'type', 'קטגוריה', 'תחום'],
   phone: ['טלפון', 'phone', 'נייד', 'tel'],
   price: ['מחיר', 'price', 'עלות', 'סכום'],
+  paid: ['שולם', 'paid', 'ששולם', 'תשלום'],
   status: ['סטטוס', 'status'],
   notes: ['הערות', 'notes', 'הערה'],
 };
@@ -42,6 +43,7 @@ const parseVendorRow = (row: Record<string, string>): Omit<Vendor, 'id'> | null 
     type: row.type || 'אחר',
     phone: row.phone || '',
     price: parseInt(row.price) || 0,
+    paid: parseInt(row.paid) || 0,
     status: statusMap[row.status] || 'בתהליך',
     notes: row.notes || '',
   };
@@ -54,12 +56,18 @@ const Vendors = () => {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
 
+  // Migrate old vendors without 'paid' field
+  const migratedVendors = vendors.map(v => ({
+    ...v,
+    paid: v.paid ?? 0,
+  }));
+
   const handleSave = () => {
     if (!form.name.trim()) return;
     if (editId) {
-      setVendors(vendors.map((v) => (v.id === editId ? { ...form, id: editId } : v)));
+      setVendors(migratedVendors.map((v) => (v.id === editId ? { ...form, id: editId } : v)));
     } else {
-      setVendors([...vendors, { ...form, id: crypto.randomUUID() }]);
+      setVendors([...migratedVendors, { ...form, id: crypto.randomUUID() }]);
     }
     setForm(emptyVendor);
     setEditId(null);
@@ -68,26 +76,27 @@ const Vendors = () => {
 
   const handleEdit = (vendor: Vendor) => {
     const { id, ...rest } = vendor;
-    setForm(rest);
+    setForm({ ...rest, paid: rest.paid ?? 0 });
     setEditId(id);
     setOpen(true);
   };
 
   const handleDelete = (id: string) => {
-    setVendors(vendors.filter((v) => v.id !== id));
+    setVendors(migratedVendors.filter((v) => v.id !== id));
   };
 
   const handleImport = (items: Omit<Vendor, 'id'>[]) => {
     const newVendors = items.map((item) => ({ ...item, id: crypto.randomUUID() }));
-    setVendors([...vendors, ...newVendors]);
+    setVendors([...migratedVendors, ...newVendors]);
   };
 
-  const filtered = vendors.filter((v) =>
+  const filtered = migratedVendors.filter((v) =>
     v.name.includes(search) || v.type.includes(search) || v.phone.includes(search)
   );
 
-  const totalBudget = vendors.reduce((s, v) => s + v.price, 0);
-  const paidTotal = vendors.filter(v => v.status === 'שולם').reduce((s, v) => s + v.price, 0);
+  const totalBudget = migratedVendors.reduce((s, v) => s + v.price, 0);
+  const paidTotal = migratedVendors.reduce((s, v) => s + v.paid, 0);
+  const paidPercent = totalBudget > 0 ? Math.min((paidTotal / totalBudget) * 100, 100) : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -95,11 +104,12 @@ const Vendors = () => {
       <WeddingNav />
 
       <main className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
+        {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-2xl font-display">ניהול ספקים</h2>
             <p className="text-sm text-muted-foreground font-body">
-              {vendors.length} ספקים · תקציב: ₪{totalBudget.toLocaleString()} · שולם: ₪{paidTotal.toLocaleString()}
+              {migratedVendors.length} ספקים
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -108,7 +118,7 @@ const Vendors = () => {
               columnMapping={vendorColumnMapping}
               parseRow={parseVendorRow}
               label="ספקים"
-              templateHeaders={['שם הספק', 'סוג', 'טלפון', 'מחיר', 'סטטוס', 'הערות']}
+              templateHeaders={['שם הספק', 'סוג', 'טלפון', 'מחיר', 'שולם', 'סטטוס', 'הערות']}
             />
             <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setForm(emptyVendor); setEditId(null); } }}>
               <DialogTrigger asChild>
@@ -143,21 +153,25 @@ const Vendors = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label>מחיר (₪)</Label>
+                      <Label>מחיר כולל (₪)</Label>
                       <Input type="number" min={0} value={form.price} onChange={(e) => setForm({ ...form, price: parseInt(e.target.value) || 0 })} dir="ltr" />
                     </div>
                     <div className="grid gap-2">
-                      <Label>סטטוס</Label>
-                      <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as Vendor['status'] })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="בתהליך">בתהליך</SelectItem>
-                          <SelectItem value="סגור">סגור</SelectItem>
-                          <SelectItem value="שולם">שולם</SelectItem>
-                          <SelectItem value="בוטל">בוטל</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <Label>שולם עד כה (₪)</Label>
+                      <Input type="number" min={0} value={form.paid} onChange={(e) => setForm({ ...form, paid: parseInt(e.target.value) || 0 })} dir="ltr" />
                     </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>סטטוס</Label>
+                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as Vendor['status'] })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="בתהליך">בתהליך</SelectItem>
+                        <SelectItem value="סגור">סגור</SelectItem>
+                        <SelectItem value="שולם">שולם</SelectItem>
+                        <SelectItem value="בוטל">בוטל</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid gap-2">
                     <Label>הערות</Label>
@@ -175,6 +189,56 @@ const Vendors = () => {
           </div>
         </div>
 
+        {/* Budget Summary Cards */}
+        {totalBudget > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            <Card className="border-border/50 overflow-hidden">
+              <CardContent className="py-4 flex items-center gap-3 bg-gradient-to-l from-primary/5 to-transparent">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Wallet className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-body">תקציב כולל</p>
+                  <p className="text-lg font-display">₪{totalBudget.toLocaleString()}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-border/50 overflow-hidden">
+              <CardContent className="py-4 flex items-center gap-3 bg-gradient-to-l from-emerald-500/5 to-transparent">
+                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <TrendingUp className="h-5 w-5 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-body">שולם עד כה</p>
+                  <p className="text-lg font-display">₪{paidTotal.toLocaleString()}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Budget Progress Bar */}
+        {totalBudget > 0 && (
+          <Card className="border-border/50">
+            <CardContent className="py-4 space-y-2">
+              <div className="flex justify-between text-sm font-body">
+                <span className="text-muted-foreground">התקדמות תשלומים</span>
+                <span className="font-medium">{paidPercent.toFixed(0)}%</span>
+              </div>
+              <div className="h-3 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-gradient-to-l from-primary to-primary/70 transition-all duration-500"
+                  style={{ width: `${paidPercent}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground text-left" dir="ltr">
+                ₪{paidTotal.toLocaleString()} / ₪{totalBudget.toLocaleString()}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Search */}
         <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -185,40 +249,62 @@ const Vendors = () => {
           />
         </div>
 
-        <div className="space-y-2">
+        {/* Vendor List */}
+        <div className="space-y-3">
           {filtered.length === 0 && (
             <Card className="border-dashed">
               <CardContent className="py-12 text-center text-muted-foreground font-body">
-                {vendors.length === 0 ? 'עדיין אין ספקים. הוסיפו את הספק הראשון או ייבאו מקובץ!' : 'לא נמצאו תוצאות'}
+                {migratedVendors.length === 0 ? 'עדיין אין ספקים. הוסיפו את הספק הראשון או ייבאו מקובץ!' : 'לא נמצאו תוצאות'}
               </CardContent>
             </Card>
           )}
-          {filtered.map((vendor) => (
-            <Card key={vendor.id} className="animate-fade-in hover:shadow-md transition-shadow">
-              <CardContent className="flex items-center justify-between py-4 gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium">{vendor.name}</p>
-                    <Badge variant="outline">{vendor.type}</Badge>
-                    <Badge variant="outline" className={statusColors[vendor.status]}>{vendor.status}</Badge>
+          {filtered.map((vendor) => {
+            const vendorPaidPercent = vendor.price > 0 ? Math.min((vendor.paid / vendor.price) * 100, 100) : 0;
+            return (
+              <Card key={vendor.id} className="animate-fade-in hover:shadow-md transition-all duration-200 border-border/60">
+                <CardContent className="py-4 px-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-base">{vendor.name}</p>
+                        <Badge variant="outline" className="text-xs">{vendor.type}</Badge>
+                        <Badge variant="outline" className={`text-xs ${statusColors[vendor.status]}`}>{vendor.status}</Badge>
+                      </div>
+                      {vendor.phone && (
+                        <p className="text-sm text-muted-foreground" dir="ltr">{vendor.phone}</p>
+                      )}
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="font-medium">₪{vendor.price.toLocaleString()}</span>
+                        <span className="text-muted-foreground">שולם: ₪{vendor.paid.toLocaleString()}</span>
+                        {vendor.price > 0 && vendor.paid < vendor.price && (
+                          <span className="text-amber-600">נותר: ₪{(vendor.price - vendor.paid).toLocaleString()}</span>
+                        )}
+                      </div>
+                      {vendor.price > 0 && (
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden max-w-xs">
+                          <div
+                            className="h-full rounded-full bg-primary/60 transition-all duration-300"
+                            style={{ width: `${vendorPaidPercent}%` }}
+                          />
+                        </div>
+                      )}
+                      {vendor.notes && (
+                        <p className="text-xs text-muted-foreground">{vendor.notes}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" onClick={() => handleEdit(vendor)}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(vendor.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                    {vendor.phone && <span dir="ltr">{vendor.phone}</span>}
-                    <span>₪{vendor.price.toLocaleString()}</span>
-                    {vendor.notes && <span>· {vendor.notes}</span>}
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => handleEdit(vendor)}>
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => handleDelete(vendor.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </main>
     </div>

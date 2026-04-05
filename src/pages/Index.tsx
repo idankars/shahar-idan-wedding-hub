@@ -15,7 +15,7 @@ const Index = () => {
   const confirmedGuests = guests.filter((g) => g.status === 'מאשר');
   const totalAttending = confirmedGuests.reduce((sum, g) => sum + g.numberOfGuests, 0);
   const totalBudget = vendors.reduce((sum, v) => sum + v.price, 0);
-  const paidTotal = vendors.filter((v) => v.status === 'שולם').reduce((s, v) => s + v.price, 0);
+  const paidTotal = vendors.reduce((s, v) => s + (v.paid ?? 0), 0);
 
   const weddingDate = new Date('2027-05-20');
   const today = new Date();
