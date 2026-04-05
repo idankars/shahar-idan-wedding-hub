@@ -1,0 +1,187 @@
+import { useState } from 'react';
+import { Plus, Trash2, Edit2, Search } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import WeddingHeader from '@/components/WeddingHeader';
+import WeddingNav from '@/components/WeddingNav';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import type { Guest } from '@/types/wedding';
+
+const emptyGuest: Omit<Guest, 'id'> = {
+  name: '', phone: '', numberOfGuests: 1, side: 'משותף', status: 'ממתין', notes: '',
+};
+
+const statusColors: Record<Guest['status'], string> = {
+  'ממתין': 'bg-muted text-muted-foreground',
+  'מאשר': 'bg-secondary text-secondary-foreground',
+  'לא מגיע': 'bg-accent text-accent-foreground',
+};
+
+const Guests = () => {
+  const [guests, setGuests] = useLocalStorage<Guest[]>('wedding-guests', []);
+  const [form, setForm] = useState<Omit<Guest, 'id'>>(emptyGuest);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const handleSave = () => {
+    if (!form.name.trim()) return;
+    if (editId) {
+      setGuests(guests.map((g) => (g.id === editId ? { ...form, id: editId } : g)));
+    } else {
+      setGuests([...guests, { ...form, id: crypto.randomUUID() }]);
+    }
+    setForm(emptyGuest);
+    setEditId(null);
+    setOpen(false);
+  };
+
+  const handleEdit = (guest: Guest) => {
+    const { id, ...rest } = guest;
+    setForm(rest);
+    setEditId(id);
+    setOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    setGuests(guests.filter((g) => g.id !== id));
+  };
+
+  const filtered = guests.filter((g) =>
+    g.name.includes(search) || g.phone.includes(search)
+  );
+
+  const totalAttending = guests.filter(g => g.status === 'מאשר').reduce((s, g) => s + g.numberOfGuests, 0);
+
+  return (
+    <div className="min-h-screen bg-background">
+      <WeddingHeader />
+      <WeddingNav />
+
+      <main className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-2xl font-display">רשימת מוזמנים</h2>
+            <p className="text-sm text-muted-foreground font-body">
+              {guests.length} מוזמנים · {totalAttending} מאשרים הגעה
+            </p>
+          </div>
+          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setForm(emptyGuest); setEditId(null); } }}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" />
+                הוסף מוזמן
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="font-body" dir="rtl">
+              <DialogHeader>
+                <DialogTitle className="font-display">{editId ? 'ערוך מוזמן' : 'מוזמן חדש'}</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label>שם</Label>
+                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="שם מלא" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>טלפון</Label>
+                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="050-0000000" dir="ltr" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label>מס׳ מוזמנים</Label>
+                    <Input type="number" min={1} value={form.numberOfGuests} onChange={(e) => setForm({ ...form, numberOfGuests: parseInt(e.target.value) || 1 })} />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>צד</Label>
+                    <Select value={form.side} onValueChange={(v) => setForm({ ...form, side: v as Guest['side'] })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="חתן">חתן</SelectItem>
+                        <SelectItem value="כלה">כלה</SelectItem>
+                        <SelectItem value="משותף">משותף</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label>סטטוס</Label>
+                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as Guest['status'] })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ממתין">ממתין</SelectItem>
+                      <SelectItem value="מאשר">מאשר</SelectItem>
+                      <SelectItem value="לא מגיע">לא מגיע</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>הערות</Label>
+                  <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="הערות (אופציונלי)" />
+                </div>
+              </div>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button variant="outline">ביטול</Button>
+                </DialogClose>
+                <Button onClick={handleSave}>שמור</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="חיפוש לפי שם או טלפון..."
+            className="pr-10"
+          />
+        </div>
+
+        <div className="space-y-3">
+          {filtered.length === 0 && (
+            <Card className="border-dashed">
+              <CardContent className="py-12 text-center text-muted-foreground font-body">
+                {guests.length === 0 ? 'עדיין אין מוזמנים. הוסיפו את המוזמן הראשון!' : 'לא נמצאו תוצאות'}
+              </CardContent>
+            </Card>
+          )}
+          {filtered.map((guest) => (
+            <Card key={guest.id} className="animate-fade-in">
+              <CardContent className="flex items-center justify-between py-4 gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-medium">{guest.name}</p>
+                    <Badge variant="outline" className={statusColors[guest.status]}>{guest.status}</Badge>
+                    <Badge variant="outline" className="text-xs">{guest.side}</Badge>
+                  </div>
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                    {guest.phone && <span dir="ltr">{guest.phone}</span>}
+                    <span>{guest.numberOfGuests} אורחים</span>
+                    {guest.notes && <span>· {guest.notes}</span>}
+                  </div>
+                </div>
+                <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => handleEdit(guest)}>
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => handleDelete(guest.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default Guests;
