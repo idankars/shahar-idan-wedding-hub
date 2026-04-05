@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import WeddingHeader from '@/components/WeddingHeader';
 import WeddingNav from '@/components/WeddingNav';
+import FileImport from '@/components/FileImport';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { Vendor } from '@/types/wedding';
 import { vendorTypes } from '@/types/wedding';
@@ -22,6 +23,28 @@ const statusColors: Record<Vendor['status'], string> = {
   'סגור': 'bg-gold-light text-foreground',
   'שולם': 'bg-secondary text-secondary-foreground',
   'בוטל': 'bg-accent text-accent-foreground',
+};
+
+const vendorColumnMapping = {
+  name: ['שם', 'name', 'שם הספק', 'ספק'],
+  type: ['סוג', 'type', 'קטגוריה', 'תחום'],
+  phone: ['טלפון', 'phone', 'נייד', 'tel'],
+  price: ['מחיר', 'price', 'עלות', 'סכום'],
+  status: ['סטטוס', 'status'],
+  notes: ['הערות', 'notes', 'הערה'],
+};
+
+const parseVendorRow = (row: Record<string, string>): Omit<Vendor, 'id'> | null => {
+  if (!row.name) return null;
+  const statusMap: Record<string, Vendor['status']> = { 'בתהליך': 'בתהליך', 'סגור': 'סגור', 'שולם': 'שולם', 'בוטל': 'בוטל' };
+  return {
+    name: row.name,
+    type: row.type || 'אחר',
+    phone: row.phone || '',
+    price: parseInt(row.price) || 0,
+    status: statusMap[row.status] || 'בתהליך',
+    notes: row.notes || '',
+  };
 };
 
 const Vendors = () => {
@@ -54,6 +77,11 @@ const Vendors = () => {
     setVendors(vendors.filter((v) => v.id !== id));
   };
 
+  const handleImport = (items: Omit<Vendor, 'id'>[]) => {
+    const newVendors = items.map((item) => ({ ...item, id: crypto.randomUUID() }));
+    setVendors([...vendors, ...newVendors]);
+  };
+
   const filtered = vendors.filter((v) =>
     v.name.includes(search) || v.type.includes(search) || v.phone.includes(search)
   );
@@ -74,68 +102,77 @@ const Vendors = () => {
               {vendors.length} ספקים · תקציב: ₪{totalBudget.toLocaleString()} · שולם: ₪{paidTotal.toLocaleString()}
             </p>
           </div>
-          <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setForm(emptyVendor); setEditId(null); } }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                הוסף ספק
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="font-body" dir="rtl">
-              <DialogHeader>
-                <DialogTitle className="font-display">{editId ? 'ערוך ספק' : 'ספק חדש'}</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>שם הספק</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="שם הספק" />
-                </div>
-                <div className="grid gap-2">
-                  <Label>סוג</Label>
-                  <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {vendorTypes.map((t) => (
-                        <SelectItem key={t} value={t}>{t}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>טלפון</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="050-0000000" dir="ltr" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+          <div className="flex gap-2 flex-wrap">
+            <FileImport<Omit<Vendor, 'id'>>
+              onImport={handleImport}
+              columnMapping={vendorColumnMapping}
+              parseRow={parseVendorRow}
+              label="ספקים"
+              templateHeaders={['שם הספק', 'סוג', 'טלפון', 'מחיר', 'סטטוס', 'הערות']}
+            />
+            <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setForm(emptyVendor); setEditId(null); } }}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  הוסף ספק
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="font-body" dir="rtl">
+                <DialogHeader>
+                  <DialogTitle className="font-display">{editId ? 'ערוך ספק' : 'ספק חדש'}</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
-                    <Label>מחיר (₪)</Label>
-                    <Input type="number" min={0} value={form.price} onChange={(e) => setForm({ ...form, price: parseInt(e.target.value) || 0 })} dir="ltr" />
+                    <Label>שם הספק</Label>
+                    <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="שם הספק" />
                   </div>
                   <div className="grid gap-2">
-                    <Label>סטטוס</Label>
-                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as Vendor['status'] })}>
+                    <Label>סוג</Label>
+                    <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="בתהליך">בתהליך</SelectItem>
-                        <SelectItem value="סגור">סגור</SelectItem>
-                        <SelectItem value="שולם">שולם</SelectItem>
-                        <SelectItem value="בוטל">בוטל</SelectItem>
+                        {vendorTypes.map((t) => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="grid gap-2">
+                    <Label>טלפון</Label>
+                    <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="050-0000000" dir="ltr" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>מחיר (₪)</Label>
+                      <Input type="number" min={0} value={form.price} onChange={(e) => setForm({ ...form, price: parseInt(e.target.value) || 0 })} dir="ltr" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label>סטטוס</Label>
+                      <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as Vendor['status'] })}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="בתהליך">בתהליך</SelectItem>
+                          <SelectItem value="סגור">סגור</SelectItem>
+                          <SelectItem value="שולם">שולם</SelectItem>
+                          <SelectItem value="בוטל">בוטל</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>הערות</Label>
+                    <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="הערות (אופציונלי)" />
+                  </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label>הערות</Label>
-                  <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="הערות (אופציונלי)" />
-                </div>
-              </div>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button variant="outline">ביטול</Button>
-                </DialogClose>
-                <Button onClick={handleSave}>שמור</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button variant="outline">ביטול</Button>
+                  </DialogClose>
+                  <Button onClick={handleSave}>שמור</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
 
         <div className="relative">
@@ -148,16 +185,16 @@ const Vendors = () => {
           />
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {filtered.length === 0 && (
             <Card className="border-dashed">
               <CardContent className="py-12 text-center text-muted-foreground font-body">
-                {vendors.length === 0 ? 'עדיין אין ספקים. הוסיפו את הספק הראשון!' : 'לא נמצאו תוצאות'}
+                {vendors.length === 0 ? 'עדיין אין ספקים. הוסיפו את הספק הראשון או ייבאו מקובץ!' : 'לא נמצאו תוצאות'}
               </CardContent>
             </Card>
           )}
           {filtered.map((vendor) => (
-            <Card key={vendor.id} className="animate-fade-in">
+            <Card key={vendor.id} className="animate-fade-in hover:shadow-md transition-shadow">
               <CardContent className="flex items-center justify-between py-4 gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
