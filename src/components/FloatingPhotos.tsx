@@ -56,14 +56,18 @@ type Slot = {
 };
 
 const SLOTS_DEFAULT: Slot[] = [
-  { side: 'left',  top: 260, size: 200, float: true  },
-  { side: 'right', top: 290, size: 140, float: false },
-  { side: 'left',  top: 480, size: 145, float: false },
-  { side: 'right', top: 520, size: 195, float: true  },
-  { side: 'left',  top: 720, size: 170, float: true  },
-  { side: 'right', top: 760, size: 135, float: false },
-  { side: 'left',  top: 940, size: 150, float: false },
-  { side: 'right', top: 970, size: 180, float: true  },
+  // Header band — same big-photo-in-gutter style as the rest
+  { side: 'left',  top: 40,  size: 195, float: true  },
+  { side: 'right', top: 55,  size: 185, float: false },
+  // Below the header
+  { side: 'left',  top: 290, size: 200, float: false },
+  { side: 'right', top: 320, size: 140, float: true  },
+  { side: 'left',  top: 510, size: 145, float: false },
+  { side: 'right', top: 550, size: 195, float: true  },
+  { side: 'left',  top: 750, size: 170, float: true  },
+  { side: 'right', top: 790, size: 135, float: false },
+  { side: 'left',  top: 970, size: 150, float: false },
+  { side: 'right', top: 1000, size: 180, float: true  },
 ];
 
 // Tucked inside the WeddingHeader band only (top < ~250px). Used on pages
