@@ -18,9 +18,9 @@ const emptyGuest: Omit<Guest, 'id'> = {
 };
 
 const statusColors: Record<Guest['status'], string> = {
-  'ממתין': 'bg-amber-50 text-amber-700 border-amber-200/70',
-  'מאשר': 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
-  'לא מגיע': 'bg-rose-50 text-rose-700 border-rose-200/70',
+  'ממתין': 'bg-muted text-muted-foreground',
+  'מאשר': 'bg-secondary text-secondary-foreground',
+  'לא מגיע': 'bg-accent text-accent-foreground',
 };
 
 const guestColumnMapping = {
@@ -92,19 +92,13 @@ const Guests = () => {
       <WeddingHeader />
       <WeddingNav />
 
-      <main className="container max-w-5xl mx-auto py-12 px-4 space-y-8">
-        <div className="flex items-end justify-between gap-4 flex-wrap animate-reveal">
+      <main className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <p className="font-serif-en italic text-xs tracking-[0.4em] uppercase text-primary/70 mb-2">Guest List</p>
-            <h2 className="text-4xl md:text-5xl font-display font-light text-gradient-shimmer">רשימת מוזמנים</h2>
-            <div className="flex items-center gap-3 mt-3">
-              <div className="h-px w-8 bg-gradient-to-l from-primary/40 to-transparent" />
-              <p className="text-sm text-muted-foreground font-body">
-                <span className="tabular-nums font-medium text-foreground">{guests.length}</span> מוזמנים
-                <span className="text-primary/40 mx-2">·</span>
-                <span className="tabular-nums font-medium text-foreground">{totalAttending}</span> מאשרים הגעה
-              </p>
-            </div>
+            <h2 className="text-2xl font-display">רשימת מוזמנים</h2>
+            <p className="text-sm text-muted-foreground font-body">
+              {guests.length} מוזמנים · {totalAttending} מאשרים הגעה
+            </p>
           </div>
           <div className="flex gap-2 flex-wrap">
             <FileImport<Omit<Guest, 'id'>>
@@ -179,12 +173,12 @@ const Guests = () => {
         </div>
 
         <div className="relative">
-          <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="חיפוש לפי שם או טלפון..."
-            className="pr-11 h-12 rounded-2xl bg-card/80 backdrop-blur-sm border-border/60 shadow-soft focus-visible:ring-primary/30"
+            className="pr-10"
           />
         </div>
 
@@ -197,30 +191,30 @@ const Guests = () => {
             </Card>
           )}
           {filtered.map((guest) => (
-            <div key={guest.id} className="luxe-card animate-fade-in">
-              <div className="flex items-center justify-between py-4 px-5 gap-4">
+            <Card key={guest.id} className="animate-fade-in hover:shadow-md transition-shadow">
+              <CardContent className="flex items-center justify-between py-4 gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-display text-lg">{guest.name}</p>
-                    <Badge variant="outline" className={`text-[10px] tracking-wider font-body ${statusColors[guest.status]}`}>{guest.status}</Badge>
-                    <Badge variant="outline" className="text-[10px] tracking-wider font-body bg-muted/60">{guest.side}</Badge>
+                    <p className="font-medium">{guest.name}</p>
+                    <Badge variant="outline" className={statusColors[guest.status]}>{guest.status}</Badge>
+                    <Badge variant="outline" className="text-xs">{guest.side}</Badge>
                   </div>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1.5">
-                    {guest.phone && <span dir="ltr" className="tabular-nums">{guest.phone}</span>}
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                    {guest.phone && <span dir="ltr">{guest.phone}</span>}
                     <span>{guest.numberOfGuests} אורחים</span>
-                    {guest.notes && <span className="text-muted-foreground/70">· {guest.notes}</span>}
+                    {guest.notes && <span>· {guest.notes}</span>}
                   </div>
                 </div>
                 <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:bg-primary/10" onClick={() => handleEdit(guest)}>
-                    <Edit2 className="h-3.5 w-3.5" />
+                  <Button size="icon" variant="ghost" onClick={() => handleEdit(guest)}>
+                    <Edit2 className="h-4 w-4" />
                   </Button>
-                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:bg-destructive/10" onClick={() => handleDelete(guest.id)}>
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  <Button size="icon" variant="ghost" onClick={() => handleDelete(guest.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </main>
