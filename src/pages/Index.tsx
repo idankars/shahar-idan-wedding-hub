@@ -28,6 +28,7 @@ const Index = () => {
   return (
     <div className="min-h-screen relative">
       <FloatingPhotos count={10} seed={7} />
+      <FloatingPhotos count={8} seed={117} variant="header" />
       <WeddingHeader />
       <WeddingNav />
 

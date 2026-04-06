@@ -46,7 +46,14 @@ const mulberry32 = (a: number) => {
 // They scroll with the page (absolute, not fixed). Top values start BELOW the
 // opaque WeddingHeader so nothing covers them.
 // `size` lets some photos be intentionally larger; `float` flips animation on/off.
-type Slot = { side: 'left' | 'right'; top: number; size: number; float: boolean };
+type Slot = {
+  side: 'left' | 'right';
+  top: number;
+  size: number;
+  float: boolean;
+  /** Optional override for horizontal distance from center */
+  xOffset?: number;
+};
 
 const SLOTS_DEFAULT: Slot[] = [
   { side: 'left',  top: 260, size: 200, float: true  },
@@ -59,14 +66,23 @@ const SLOTS_DEFAULT: Slot[] = [
   { side: 'right', top: 970, size: 180, float: true  },
 ];
 
-// Tucked inside the WeddingHeader band only (top < ~200px). Used on pages
+// Tucked inside the WeddingHeader band only (top < ~250px). Used on pages
 // that have full-width content (e.g. the Guests table) where there are no
-// side gutters below the header.
+// side gutters below the header. 4 photos per side, arranged in 2 rows × 2
+// columns (near/far from center) so they never overlap each other.
 const SLOTS_HEADER: Slot[] = [
-  { side: 'left',  top: 30, size: 140, float: false },
-  { side: 'right', top: 25, size: 130, float: true  },
-  { side: 'left',  top: 95, size: 115, float: true  },
-  { side: 'right', top: 100, size: 145, float: false },
+  // Top row — left side
+  { side: 'left',  top: 8,   size: 110, float: false, xOffset: 280 },
+  { side: 'left',  top: 18,  size: 95,  float: true,  xOffset: 420 },
+  // Top row — right side
+  { side: 'right', top: 12,  size: 105, float: true,  xOffset: 280 },
+  { side: 'right', top: 22,  size: 100, float: false, xOffset: 420 },
+  // Bottom row — left side
+  { side: 'left',  top: 140, size: 105, float: true,  xOffset: 280 },
+  { side: 'left',  top: 150, size: 95,  float: false, xOffset: 420 },
+  // Bottom row — right side
+  { side: 'right', top: 135, size: 110, float: false, xOffset: 280 },
+  { side: 'right', top: 145, size: 100, float: true,  xOffset: 420 },
 ];
 
 // Packed near the top — photos stay above the fold so they're visible
@@ -103,7 +119,10 @@ const FloatingPhotos = ({ count = 6, seed = 42, variant = 'default' }: FloatingP
       const rotate = (rand() * 14 - 7).toFixed(1);
       const delay = (rand() * 4).toFixed(2);
       const duration = (7 + rand() * 4).toFixed(2);
-      const sideJitter = Math.floor(rand() * 24);
+      // No jitter when slot has its own xOffset (header layout) so the
+      // 2-column near/far columns don't drift into each other.
+      const sideJitter = slot.xOffset != null ? 0 : Math.floor(rand() * 24);
+      const xOffset = slot.xOffset ?? baseOffset;
 
       return {
         src,
@@ -115,7 +134,7 @@ const FloatingPhotos = ({ count = 6, seed = 42, variant = 'default' }: FloatingP
         rotate,
         delay,
         duration,
-        baseOffset,
+        xOffset,
       };
     });
   }, [count, seed, variant]);
@@ -134,7 +153,7 @@ const FloatingPhotos = ({ count = 6, seed = 42, variant = 'default' }: FloatingP
             top: `${p.top}px`,
             // Push beyond the centered max-w-4xl (896px) content edge so photos
             // sit in the gutter and never overlap the cards/text.
-            [p.side === 'left' ? 'right' : 'left']: `calc(50% + ${p.baseOffset}px + ${p.sideJitter}px)`,
+            [p.side === 'left' ? 'right' : 'left']: `calc(50% + ${p.xOffset}px + ${p.sideJitter}px)`,
             animationDelay: p.float ? `${p.delay}s` : undefined,
             animationDuration: p.float ? `${p.duration}s` : undefined,
           }}

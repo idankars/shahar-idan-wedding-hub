@@ -512,7 +512,7 @@ const Guests = () => {
 
   return (
     <div className="min-h-screen relative">
-      <FloatingPhotos count={4} seed={23} variant="header" />
+      <FloatingPhotos count={8} seed={23} variant="header" />
       <WeddingHeader />
       <WeddingNav />
 

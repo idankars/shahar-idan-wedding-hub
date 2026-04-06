@@ -135,6 +135,7 @@ const Vendors = () => {
   return (
     <div className="min-h-screen relative">
       <FloatingPhotos count={5} seed={91} />
+      <FloatingPhotos count={8} seed={203} variant="header" />
       <WeddingHeader />
       <WeddingNav />
 
