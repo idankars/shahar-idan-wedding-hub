@@ -232,6 +232,7 @@ const Guests = () => {
   const [viewMode, setViewMode] = useState<'list' | 'table'>(() => loadJSON<'list' | 'table'>(VIEW_MODE_KEY, 'list'));
   const [columnOrder, setColumnOrder] = useState<string[]>(() => loadJSON<string[]>(COLUMN_ORDER_KEY, []));
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
   const [dragOverSide, setDragOverSide] = useState<string | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
@@ -268,14 +269,28 @@ const Guests = () => {
   };
 
   // ── Multi-select & bulk move ──
-  const toggleSelect = (id: string) => {
+  const toggleSelect = (id: string, shiftKey = false, orderedIds?: string[]) => {
+    if (shiftKey && lastSelectedId && orderedIds && orderedIds.includes(lastSelectedId) && orderedIds.includes(id)) {
+      const a = orderedIds.indexOf(lastSelectedId);
+      const b = orderedIds.indexOf(id);
+      const [start, end] = a < b ? [a, b] : [b, a];
+      const range = orderedIds.slice(start, end + 1);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        range.forEach((r) => next.add(r));
+        return next;
+      });
+      setLastSelectedId(id);
+      return;
+    }
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id); else next.add(id);
       return next;
     });
+    setLastSelectedId(id);
   };
-  const clearSelection = () => setSelectedIds(new Set());
+  const clearSelection = () => { setSelectedIds(new Set()); setLastSelectedId(null); };
   const moveSelectedTo = (side: string) => {
     if (selectedIds.size === 0) return;
     setGuests(guests.map((g) => (selectedIds.has(g.id) ? { ...g, side } : g)));
@@ -569,7 +584,7 @@ const Guests = () => {
               <X className="h-3.5 w-3.5" />
               נקה
             </Button>
-            <span className="text-xs text-muted-foreground hidden md:inline mr-auto">טיפ: גרור את הכרטיסים אל קטגוריה כדי להעביר</span>
+            <span className="text-xs text-muted-foreground hidden md:inline mr-auto">טיפ: Shift+קליק לבחירת טווח · גרור כרטיסים להעברה</span>
           </div>
         )}
 
@@ -582,21 +597,36 @@ const Guests = () => {
                 </CardContent>
               </Card>
             )}
-            {filtered.map((guest) => {
+            {(() => {
+              const listIds = filtered.map((g) => g.id);
+              return filtered.map((guest) => {
               const isSelected = selectedIds.has(guest.id);
               return (
                 <Card
                   key={guest.id}
                   draggable
                   onDragStart={(e) => handleDragStart(e, guest.id)}
-                  className={`animate-fade-in hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing ${isSelected ? 'ring-2 ring-primary border-primary/50' : ''}`}
+                  onClick={(e) => {
+                    if (e.shiftKey) {
+                      e.preventDefault();
+                      window.getSelection()?.removeAllRanges();
+                      toggleSelect(guest.id, true, listIds);
+                    }
+                  }}
+                  className={`animate-fade-in hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing select-none ${isSelected ? 'ring-2 ring-primary border-primary/50' : ''}`}
                 >
                   <CardContent className="flex items-center justify-between py-4 gap-3">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <Checkbox
                         checked={isSelected}
-                        onCheckedChange={() => toggleSelect(guest.id)}
-                        onClick={(e) => e.stopPropagation()}
+                        onCheckedChange={() => toggleSelect(guest.id, false, listIds)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if ((e as React.MouseEvent).shiftKey) {
+                            e.preventDefault();
+                            toggleSelect(guest.id, true, listIds);
+                          }
+                        }}
                       />
                       <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -623,7 +653,8 @@ const Guests = () => {
                   </CardContent>
                 </Card>
               );
-            })}
+            });
+            })()}
           </div>
         )}
 
@@ -632,6 +663,7 @@ const Guests = () => {
             <div className="flex gap-3 min-w-min">
               {orderedSides.map((side, idx) => {
                 const colGuests = filtered.filter((g) => g.side === side);
+                const colIds = colGuests.map((g) => g.id);
                 const isOver = dragOverSide === side;
                 return (
                   <div
@@ -674,13 +706,26 @@ const Guests = () => {
                             key={guest.id}
                             draggable
                             onDragStart={(e) => handleDragStart(e, guest.id)}
-                            className={`bg-card border rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all ${isSelected ? 'ring-2 ring-primary border-primary/50' : 'border-border/60'}`}
+                            onClick={(e) => {
+                              if (e.shiftKey) {
+                                e.preventDefault();
+                                window.getSelection()?.removeAllRanges();
+                                toggleSelect(guest.id, true, colIds);
+                              }
+                            }}
+                            className={`bg-card border rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all select-none ${isSelected ? 'ring-2 ring-primary border-primary/50' : 'border-border/60'}`}
                           >
                             <div className="flex items-start gap-2">
                               <Checkbox
                                 checked={isSelected}
-                                onCheckedChange={() => toggleSelect(guest.id)}
-                                onClick={(e) => e.stopPropagation()}
+                                onCheckedChange={() => toggleSelect(guest.id, false, colIds)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if ((e as React.MouseEvent).shiftKey) {
+                                    e.preventDefault();
+                                    toggleSelect(guest.id, true, colIds);
+                                  }
+                                }}
                                 className="mt-0.5"
                               />
                               <div className="flex-1 min-w-0">
