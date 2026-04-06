@@ -26,7 +26,6 @@ interface FloatingPhotosProps {
   seed?: number;
 }
 
-// Deterministic pseudo-random for stable layout per page load
 const mulberry32 = (a: number) => {
   return () => {
     let t = (a += 0x6d2b79f5);
@@ -36,33 +35,57 @@ const mulberry32 = (a: number) => {
   };
 };
 
-const FloatingPhotos = ({ count = 8, seed = 42 }: FloatingPhotosProps) => {
+// Fixed zones along left/right edges to prevent overlap.
+// Each zone is { side, topPct }. Photos placed at hard-coded slots,
+// scattered top-to-bottom but never on the central content area.
+const ZONES: Array<{ side: 'left' | 'right'; topPct: number }> = [
+  { side: 'left',  topPct: 2 },
+  { side: 'right', topPct: 5 },
+  { side: 'left',  topPct: 22 },
+  { side: 'right', topPct: 28 },
+  { side: 'left',  topPct: 46 },
+  { side: 'right', topPct: 52 },
+  { side: 'left',  topPct: 70 },
+  { side: 'right', topPct: 76 },
+  { side: 'left',  topPct: 88 },
+  { side: 'right', topPct: 92 },
+];
+
+const FloatingPhotos = ({ count = 6, seed = 42 }: FloatingPhotosProps) => {
   const items = useMemo(() => {
     const rand = mulberry32(seed);
-    const shuffled = [...PHOTOS].sort(() => rand() - 0.5);
-    const picks = shuffled.slice(0, Math.min(count, PHOTOS.length));
+    const shuffledPhotos = [...PHOTOS].sort(() => rand() - 0.5);
+    const zones = ZONES.slice(0, Math.min(count, ZONES.length));
 
-    return picks.map((src, i) => {
-      // Distribute across left/right edges with varied vertical positions
-      const isLeft = i % 2 === 0;
-      const horizontal = isLeft
-        ? `${rand() * 8}%`
-        : `${92 - rand() * 8}%`;
-      const top = `${10 + (i / picks.length) * 80 + (rand() * 8 - 4)}%`;
-      const rotate = (rand() * 24 - 12).toFixed(1);
-      const size = 110 + Math.floor(rand() * 70); // 110-180px
+    return zones.map((zone, i) => {
+      const src = shuffledPhotos[i % shuffledPhotos.length];
+      const rotate = (rand() * 18 - 9).toFixed(1);
+      const size = 120 + Math.floor(rand() * 50); // 120-170px
       const delay = (rand() * 4).toFixed(2);
-      const duration = (6 + rand() * 4).toFixed(2);
-      const z = i;
+      const duration = (7 + rand() * 4).toFixed(2);
+      // Slight vertical jitter so they're not all in straight rows
+      const topJitter = (rand() * 6 - 3).toFixed(1);
+      // Pull just a bit off-screen so they peek in
+      const offset = Math.floor(size * 0.25);
 
-      return { src, horizontal, top, rotate, size, delay, duration, z, isLeft };
+      return {
+        src,
+        side: zone.side,
+        top: `calc(${zone.topPct}% + ${topJitter}px)`,
+        offset,
+        rotate,
+        size,
+        delay,
+        duration,
+      };
     });
   }, [count, seed]);
 
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 overflow-hidden z-0 hidden md:block"
+      className="pointer-events-none fixed inset-0 overflow-hidden hidden md:block"
+      style={{ zIndex: 45 }}
     >
       {items.map((p, i) => (
         <div
@@ -70,14 +93,13 @@ const FloatingPhotos = ({ count = 8, seed = 42 }: FloatingPhotosProps) => {
           className="absolute animate-float-photo"
           style={{
             top: p.top,
-            [p.isLeft ? 'left' : 'right']: `-${Math.floor(p.size * 0.3)}px`,
+            [p.side]: `-${p.offset}px`,
             animationDelay: `${p.delay}s`,
             animationDuration: `${p.duration}s`,
-            zIndex: p.z,
           }}
         >
           <div
-            className="bg-white p-2 pb-6 shadow-2xl rounded-sm border border-white/60"
+            className="bg-white p-2 pb-5 shadow-2xl rounded-sm border border-white/80"
             style={{
               width: p.size,
               transform: `rotate(${p.rotate}deg)`,
@@ -87,7 +109,7 @@ const FloatingPhotos = ({ count = 8, seed = 42 }: FloatingPhotosProps) => {
               src={p.src}
               alt=""
               loading="lazy"
-              className="w-full h-auto object-cover"
+              className="w-full h-auto object-cover block"
               style={{ aspectRatio: '4/5' }}
             />
           </div>
