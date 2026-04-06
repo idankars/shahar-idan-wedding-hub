@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;500;700;900&family=Heebo:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,82 +6,76 @@
 
 @layer base {
   :root {
-    --background: 40 33% 98%;
-    --foreground: 30 10% 20%;
+    --background: 38 40% 98%;
+    --foreground: 28 18% 16%;
 
-    --card: 40 30% 97%;
-    --card-foreground: 30 10% 20%;
+    --card: 40 50% 99%;
+    --card-foreground: 28 18% 16%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 30 10% 20%;
+    --popover-foreground: 28 18% 16%;
 
-    --primary: 36 60% 52%;
-    --primary-foreground: 40 33% 98%;
+    --primary: 32 48% 42%;
+    --primary-foreground: 40 40% 98%;
 
-    --secondary: 150 20% 90%;
-    --secondary-foreground: 150 25% 30%;
+    --secondary: 145 18% 82%;
+    --secondary-foreground: 145 30% 22%;
 
-    --muted: 40 20% 94%;
-    --muted-foreground: 30 8% 50%;
+    --muted: 38 25% 93%;
+    --muted-foreground: 28 12% 45%;
 
-    --accent: 350 40% 92%;
-    --accent-foreground: 350 40% 35%;
+    --accent: 355 45% 92%;
+    --accent-foreground: 355 50% 32%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 36 25% 88%;
-    --input: 36 25% 88%;
-    --ring: 36 60% 52%;
+    --border: 36 28% 86%;
+    --input: 36 28% 86%;
+    --ring: 32 48% 42%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
 
-    --gold: 36 60% 52%;
-    --gold-light: 40 50% 90%;
-    --blush: 350 40% 92%;
-    --sage: 150 20% 90%;
-    --sage-dark: 150 25% 30%;
+    --gold: 32 55% 48%;
+    --gold-light: 40 60% 92%;
+    --gold-deep: 30 60% 32%;
+    --blush: 355 45% 92%;
+    --sage: 145 18% 82%;
+    --sage-dark: 145 30% 22%;
+    --champagne: 38 50% 90%;
 
     --sidebar-background: 40 30% 97%;
-    --sidebar-foreground: 30 10% 25%;
-    --sidebar-primary: 36 60% 52%;
-    --sidebar-primary-foreground: 40 33% 98%;
+    --sidebar-foreground: 28 18% 22%;
+    --sidebar-primary: 32 48% 42%;
+    --sidebar-primary-foreground: 40 40% 98%;
     --sidebar-accent: 40 25% 93%;
-    --sidebar-accent-foreground: 30 10% 20%;
-    --sidebar-border: 36 25% 88%;
-    --sidebar-ring: 36 60% 52%;
+    --sidebar-accent-foreground: 28 18% 16%;
+    --sidebar-border: 36 28% 86%;
+    --sidebar-ring: 32 48% 42%;
 
     font-family: 'Heebo', sans-serif;
   }
 
   .dark {
-    --background: 30 10% 10%;
-    --foreground: 40 20% 92%;
-    --card: 30 10% 13%;
-    --card-foreground: 40 20% 92%;
-    --popover: 30 10% 13%;
-    --popover-foreground: 40 20% 92%;
-    --primary: 36 60% 52%;
-    --primary-foreground: 30 10% 10%;
-    --secondary: 150 15% 18%;
-    --secondary-foreground: 150 20% 85%;
-    --muted: 30 10% 18%;
-    --muted-foreground: 30 8% 60%;
-    --accent: 350 30% 20%;
-    --accent-foreground: 350 40% 85%;
+    --background: 28 12% 9%;
+    --foreground: 40 25% 94%;
+    --card: 28 12% 12%;
+    --card-foreground: 40 25% 94%;
+    --popover: 28 12% 12%;
+    --popover-foreground: 40 25% 94%;
+    --primary: 36 60% 56%;
+    --primary-foreground: 28 12% 9%;
+    --secondary: 145 15% 18%;
+    --secondary-foreground: 145 20% 88%;
+    --muted: 28 10% 17%;
+    --muted-foreground: 28 8% 62%;
+    --accent: 355 30% 22%;
+    --accent-foreground: 355 50% 88%;
     --destructive: 0 62% 30%;
     --destructive-foreground: 0 0% 100%;
-    --border: 30 10% 20%;
-    --input: 30 10% 20%;
-    --ring: 36 60% 52%;
-    --sidebar-background: 30 10% 10%;
-    --sidebar-foreground: 40 20% 92%;
-    --sidebar-primary: 36 60% 52%;
-    --sidebar-primary-foreground: 30 10% 10%;
-    --sidebar-accent: 30 10% 16%;
-    --sidebar-accent-foreground: 40 20% 92%;
-    --sidebar-border: 30 10% 20%;
-    --sidebar-ring: 36 60% 52%;
+    --border: 28 10% 20%;
+    --input: 28 10% 20%;
+    --ring: 36 60% 56%;
   }
 }
 
@@ -90,21 +84,80 @@
     @apply border-border;
   }
 
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-foreground;
     direction: rtl;
+    background-image:
+      radial-gradient(at 20% 0%, hsl(var(--gold-light) / 0.4) 0px, transparent 50%),
+      radial-gradient(at 80% 100%, hsl(var(--blush) / 0.35) 0px, transparent 50%),
+      radial-gradient(at 50% 50%, hsl(var(--champagne) / 0.25) 0px, transparent 60%);
+    background-attachment: fixed;
+    min-height: 100vh;
   }
 
   h1, h2, h3, h4 {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Frank Ruhl Libre', serif;
+    letter-spacing: -0.01em;
   }
 }
 
 @layer utilities {
   .font-display {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Frank Ruhl Libre', serif;
+    letter-spacing: -0.015em;
+  }
+  .font-serif-en {
+    font-family: 'Cormorant Garamond', serif;
   }
   .font-body {
     font-family: 'Heebo', sans-serif;
+  }
+
+  .text-gradient-gold {
+    background-image: linear-gradient(135deg, hsl(var(--gold-deep)) 0%, hsl(var(--gold)) 50%, hsl(var(--gold-deep)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .glass {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+  }
+
+  .shadow-soft {
+    box-shadow: 0 1px 2px hsl(var(--gold-deep) / 0.04), 0 8px 32px -8px hsl(var(--gold-deep) / 0.08);
+  }
+  .shadow-luxe {
+    box-shadow:
+      0 1px 0 hsl(var(--card)) inset,
+      0 1px 3px hsl(var(--gold-deep) / 0.06),
+      0 12px 40px -12px hsl(var(--gold-deep) / 0.18);
+  }
+
+  .ornament-divider::before,
+  .ornament-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(to right, transparent, hsl(var(--primary) / 0.4), transparent);
+  }
+  .ornament-divider {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
+@layer components {
+  .luxe-card {
+    @apply relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 backdrop-blur-sm shadow-soft transition-all duration-300 hover:shadow-luxe hover:-translate-y-0.5;
   }
 }

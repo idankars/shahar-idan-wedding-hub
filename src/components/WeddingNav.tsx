@@ -11,25 +11,27 @@ const WeddingNav = () => {
   const location = useLocation();
 
   return (
-    <nav className="sticky top-0 z-40 backdrop-blur-md bg-background/80 border-b border-border">
-      <div className="flex gap-1 justify-center py-2.5 max-w-4xl mx-auto">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.to;
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-body text-sm transition-all ${
-                isActive
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-              }`}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          );
-        })}
+    <nav className="sticky top-4 z-40 px-4">
+      <div className="mx-auto max-w-md">
+        <div className="glass border border-border/60 rounded-full shadow-luxe p-1.5 flex gap-1">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.to;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-full font-body text-sm font-medium transition-all duration-300 ${
+                  isActive
+                    ? 'bg-gradient-to-b from-primary to-primary/90 text-primary-foreground shadow-md shadow-primary/20'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                }`}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );

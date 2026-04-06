@@ -19,10 +19,10 @@ const emptyVendor: Omit<Vendor, 'id'> = {
 };
 
 const statusColors: Record<Vendor['status'], string> = {
-  'בתהליך': 'bg-amber-100 text-amber-700 border-amber-200',
-  'סגור': 'bg-blue-100 text-blue-700 border-blue-200',
-  'שולם': 'bg-emerald-100 text-emerald-700 border-emerald-200',
-  'בוטל': 'bg-red-100 text-red-700 border-red-200',
+  'בתהליך': 'bg-amber-50 text-amber-700 border-amber-200/70',
+  'סגור': 'bg-sky-50 text-sky-700 border-sky-200/70',
+  'שולם': 'bg-emerald-50 text-emerald-700 border-emerald-200/70',
+  'בוטל': 'bg-rose-50 text-rose-700 border-rose-200/70',
 };
 
 const vendorColumnMapping = {
@@ -99,17 +99,18 @@ const Vendors = () => {
   const paidPercent = totalBudget > 0 ? Math.min((paidTotal / totalBudget) * 100, 100) : 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       <WeddingHeader />
       <WeddingNav />
 
-      <main className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
+      <main className="container max-w-4xl mx-auto py-10 px-4 space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-end justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="text-2xl font-display">ניהול ספקים</h2>
-            <p className="text-sm text-muted-foreground font-body">
-              {migratedVendors.length} ספקים
+            <p className="text-[11px] tracking-[0.3em] uppercase text-primary/70 font-body mb-1">Vendors</p>
+            <h2 className="text-3xl md:text-4xl font-display font-light text-gradient-gold">ניהול ספקים</h2>
+            <p className="text-sm text-muted-foreground font-body mt-1">
+              {migratedVendors.length} ספקים רשומים
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
@@ -189,63 +190,55 @@ const Vendors = () => {
           </div>
         </div>
 
-        {/* Budget Summary Cards */}
+        {/* Budget Summary */}
         {totalBudget > 0 && (
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="border-border/50 overflow-hidden">
-              <CardContent className="py-4 flex items-center gap-3 bg-gradient-to-l from-primary/5 to-transparent">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Wallet className="h-5 w-5 text-primary" />
+          <div className="luxe-card">
+            <div className="absolute inset-0 bg-gradient-to-br from-gold-light/30 via-transparent to-blush/20" />
+            <div className="relative px-6 py-5 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Wallet className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-body">תקציב כולל</p>
+                    <p className="font-display text-xl tabular-nums">₪{totalBudget.toLocaleString()}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-body">תקציב כולל</p>
-                  <p className="text-lg font-display">₪{totalBudget.toLocaleString()}</p>
+                <div className="flex items-center gap-3">
+                  <div className="h-11 w-11 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <TrendingUp className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-body">שולם עד כה</p>
+                    <p className="font-display text-xl tabular-nums">₪{paidTotal.toLocaleString()}</p>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="border-border/50 overflow-hidden">
-              <CardContent className="py-4 flex items-center gap-3 bg-gradient-to-l from-emerald-500/5 to-transparent">
-                <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0">
-                  <TrendingUp className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div className="space-y-2 pt-2 border-t border-border/40">
+                <div className="flex justify-between items-baseline text-sm font-body">
+                  <span className="text-muted-foreground">התקדמות תשלומים</span>
+                  <span className="font-display text-lg text-gradient-gold tabular-nums">{paidPercent.toFixed(0)}%</span>
                 </div>
-                <div>
-                  <p className="text-xs text-muted-foreground font-body">שולם עד כה</p>
-                  <p className="text-lg font-display">₪{paidTotal.toLocaleString()}</p>
+                <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-l from-primary via-primary/90 to-primary/70 transition-all duration-700 ease-out"
+                    style={{ width: `${paidPercent}%` }}
+                  />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
-        )}
-
-        {/* Budget Progress Bar */}
-        {totalBudget > 0 && (
-          <Card className="border-border/50">
-            <CardContent className="py-4 space-y-2">
-              <div className="flex justify-between text-sm font-body">
-                <span className="text-muted-foreground">התקדמות תשלומים</span>
-                <span className="font-medium">{paidPercent.toFixed(0)}%</span>
-              </div>
-              <div className="h-3 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-gradient-to-l from-primary to-primary/70 transition-all duration-500"
-                  style={{ width: `${paidPercent}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground text-left" dir="ltr">
-                ₪{paidTotal.toLocaleString()} / ₪{totalBudget.toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
         )}
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="חיפוש לפי שם, סוג או טלפון..."
-            className="pr-10"
+            className="pr-11 h-12 rounded-2xl bg-card/80 backdrop-blur-sm border-border/60 shadow-soft focus-visible:ring-primary/30"
           />
         </div>
 
@@ -261,14 +254,14 @@ const Vendors = () => {
           {filtered.map((vendor) => {
             const vendorPaidPercent = vendor.price > 0 ? Math.min((vendor.paid / vendor.price) * 100, 100) : 0;
             return (
-              <Card key={vendor.id} className="animate-fade-in hover:shadow-md transition-all duration-200 border-border/60">
-                <CardContent className="py-4 px-5">
+              <div key={vendor.id} className="luxe-card animate-fade-in">
+                <div className="px-5 py-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="font-semibold text-base">{vendor.name}</p>
-                        <Badge variant="outline" className="text-xs">{vendor.type}</Badge>
-                        <Badge variant="outline" className={`text-xs ${statusColors[vendor.status]}`}>{vendor.status}</Badge>
+                        <p className="font-display text-lg">{vendor.name}</p>
+                        <Badge variant="outline" className="text-[10px] tracking-wider font-body bg-muted/60">{vendor.type}</Badge>
+                        <Badge variant="outline" className={`text-[10px] tracking-wider font-body ${statusColors[vendor.status]}`}>{vendor.status}</Badge>
                       </div>
                       {vendor.phone && (
                         <p className="text-sm text-muted-foreground" dir="ltr">{vendor.phone}</p>
@@ -293,16 +286,16 @@ const Vendors = () => {
                       )}
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button size="icon" variant="ghost" onClick={() => handleEdit(vendor)}>
-                        <Edit2 className="h-4 w-4" />
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:bg-primary/10" onClick={() => handleEdit(vendor)}>
+                        <Edit2 className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => handleDelete(vendor.id)}>
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:bg-destructive/10" onClick={() => handleDelete(vendor.id)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
