@@ -103,15 +103,18 @@ const Vendors = () => {
       <WeddingHeader />
       <WeddingNav />
 
-      <main className="container max-w-4xl mx-auto py-10 px-4 space-y-6">
+      <main className="container max-w-5xl mx-auto py-12 px-4 space-y-8">
         {/* Header */}
-        <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div className="flex items-end justify-between gap-4 flex-wrap animate-reveal">
           <div>
-            <p className="text-[11px] tracking-[0.3em] uppercase text-primary/70 font-body mb-1">Vendors</p>
-            <h2 className="text-3xl md:text-4xl font-display font-light text-gradient-gold">ניהול ספקים</h2>
-            <p className="text-sm text-muted-foreground font-body mt-1">
-              {migratedVendors.length} ספקים רשומים
-            </p>
+            <p className="font-serif-en italic text-xs tracking-[0.4em] uppercase text-primary/70 mb-2">Vendors</p>
+            <h2 className="text-4xl md:text-5xl font-display font-light text-gradient-shimmer">ניהול ספקים</h2>
+            <div className="flex items-center gap-3 mt-3">
+              <div className="h-px w-8 bg-gradient-to-l from-primary/40 to-transparent" />
+              <p className="text-sm text-muted-foreground font-body">
+                <span className="tabular-nums font-medium text-foreground">{migratedVendors.length}</span> ספקים רשומים
+              </p>
+            </div>
           </div>
           <div className="flex gap-2 flex-wrap">
             <FileImport<Omit<Vendor, 'id'>>
