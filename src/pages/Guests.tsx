@@ -49,6 +49,45 @@ const statusColors: Record<Guest['status'], string> = {
   'לא מגיע': 'bg-accent text-accent-foreground',
 };
 
+// Vibrant color palette for board columns — each side gets a distinct color
+const sidePalette = [
+  { bg: 'bg-rose-50', border: 'border-rose-200', headerBg: 'bg-rose-100/80', headerText: 'text-rose-700', cardBorder: 'border-rose-200/60', dragBg: 'bg-rose-100', dragBorder: 'border-rose-400' },
+  { bg: 'bg-sky-50', border: 'border-sky-200', headerBg: 'bg-sky-100/80', headerText: 'text-sky-700', cardBorder: 'border-sky-200/60', dragBg: 'bg-sky-100', dragBorder: 'border-sky-400' },
+  { bg: 'bg-amber-50', border: 'border-amber-200', headerBg: 'bg-amber-100/80', headerText: 'text-amber-700', cardBorder: 'border-amber-200/60', dragBg: 'bg-amber-100', dragBorder: 'border-amber-400' },
+  { bg: 'bg-emerald-50', border: 'border-emerald-200', headerBg: 'bg-emerald-100/80', headerText: 'text-emerald-700', cardBorder: 'border-emerald-200/60', dragBg: 'bg-emerald-100', dragBorder: 'border-emerald-400' },
+  { bg: 'bg-violet-50', border: 'border-violet-200', headerBg: 'bg-violet-100/80', headerText: 'text-violet-700', cardBorder: 'border-violet-200/60', dragBg: 'bg-violet-100', dragBorder: 'border-violet-400' },
+  { bg: 'bg-pink-50', border: 'border-pink-200', headerBg: 'bg-pink-100/80', headerText: 'text-pink-700', cardBorder: 'border-pink-200/60', dragBg: 'bg-pink-100', dragBorder: 'border-pink-400' },
+  { bg: 'bg-cyan-50', border: 'border-cyan-200', headerBg: 'bg-cyan-100/80', headerText: 'text-cyan-700', cardBorder: 'border-cyan-200/60', dragBg: 'bg-cyan-100', dragBorder: 'border-cyan-400' },
+  { bg: 'bg-orange-50', border: 'border-orange-200', headerBg: 'bg-orange-100/80', headerText: 'text-orange-700', cardBorder: 'border-orange-200/60', dragBg: 'bg-orange-100', dragBorder: 'border-orange-400' },
+  { bg: 'bg-lime-50', border: 'border-lime-200', headerBg: 'bg-lime-100/80', headerText: 'text-lime-700', cardBorder: 'border-lime-200/60', dragBg: 'bg-lime-100', dragBorder: 'border-lime-400' },
+  { bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', headerBg: 'bg-fuchsia-100/80', headerText: 'text-fuchsia-700', cardBorder: 'border-fuchsia-200/60', dragBg: 'bg-fuchsia-100', dragBorder: 'border-fuchsia-400' },
+  { bg: 'bg-teal-50', border: 'border-teal-200', headerBg: 'bg-teal-100/80', headerText: 'text-teal-700', cardBorder: 'border-teal-200/60', dragBg: 'bg-teal-100', dragBorder: 'border-teal-400' },
+  { bg: 'bg-indigo-50', border: 'border-indigo-200', headerBg: 'bg-indigo-100/80', headerText: 'text-indigo-700', cardBorder: 'border-indigo-200/60', dragBg: 'bg-indigo-100', dragBorder: 'border-indigo-400' },
+];
+
+const sideBadgeColors = [
+  'bg-rose-100 text-rose-700 border-rose-200',
+  'bg-sky-100 text-sky-700 border-sky-200',
+  'bg-amber-100 text-amber-700 border-amber-200',
+  'bg-emerald-100 text-emerald-700 border-emerald-200',
+  'bg-violet-100 text-violet-700 border-violet-200',
+  'bg-pink-100 text-pink-700 border-pink-200',
+  'bg-cyan-100 text-cyan-700 border-cyan-200',
+  'bg-orange-100 text-orange-700 border-orange-200',
+  'bg-lime-100 text-lime-700 border-lime-200',
+  'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
+  'bg-teal-100 text-teal-700 border-teal-200',
+  'bg-indigo-100 text-indigo-700 border-indigo-200',
+];
+
+const hashStr = (s: string): number => {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+};
+const colorForSide = (side: string) => sidePalette[hashStr(side) % sidePalette.length];
+const badgeForSide = (side: string) => sideBadgeColors[hashStr(side) % sideBadgeColors.length];
+
 const guestColumnMapping = {
   name: ['שם', 'name', 'שם מלא', 'שם המוזמן'],
   phone: ['טלפון', 'phone', 'נייד', 'מספר טלפון', 'tel'],
@@ -677,7 +716,7 @@ const Guests = () => {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium">{guest.name}</p>
                           <Badge variant="outline" className={statusColors[guest.status]}>{guest.status}</Badge>
-                          <Badge variant="outline" className="text-xs bg-primary/5">{guest.side}</Badge>
+                          <Badge variant="outline" className={`text-xs ${badgeForSide(guest.side)}`}>{guest.side}</Badge>
                         </div>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                           {guest.phone && <span dir="ltr">{guest.phone}</span>}
@@ -739,15 +778,16 @@ const Guests = () => {
                 const colGuests = filtered.filter((g) => g.side === side);
                 const colIds = colGuests.map((g) => g.id);
                 const isOver = dragOverSide === side;
+                const c = colorForSide(side);
                 return (
                   <div
                     key={side}
                     onDragOver={(e) => handleColumnDragOver(e, side)}
                     onDragLeave={handleColumnDragLeave}
                     onDrop={(e) => handleColumnDrop(e, side)}
-                    className={`w-64 shrink-0 rounded-xl border bg-muted/30 transition-colors ${isOver ? 'border-primary bg-primary/10' : 'border-border/50'}`}
+                    className={`w-64 shrink-0 rounded-xl border-2 transition-all ${isOver ? `${c.dragBg} ${c.dragBorder} scale-[1.02] shadow-lg` : `${c.bg} ${c.border}`}`}
                   >
-                    <div className="flex items-center justify-between gap-1 px-3 py-2 border-b border-border/50 bg-card/50 rounded-t-xl">
+                    <div className={`flex items-center justify-between gap-1 px-3 py-2 border-b ${c.border} ${c.headerBg} rounded-t-xl`}>
                       <button
                         onClick={() => moveColumn(side, -1)}
                         disabled={idx === 0}
@@ -757,8 +797,8 @@ const Guests = () => {
                         <ChevronRight className="h-3.5 w-3.5" />
                       </button>
                       <div className="flex-1 text-center">
-                        <p className="text-sm font-medium truncate">{side}</p>
-                        <p className="text-xs text-muted-foreground">{colGuests.length}</p>
+                        <p className={`text-sm font-bold truncate ${c.headerText}`}>{side}</p>
+                        <p className={`text-xs ${c.headerText} opacity-70`}>{colGuests.length}</p>
                       </div>
                       <button
                         onClick={() => moveColumn(side, 1)}
@@ -787,7 +827,7 @@ const Guests = () => {
                                 toggleSelect(guest.id, true, colIds);
                               }
                             }}
-                            className={`bg-card border rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all select-none ${isSelected ? 'ring-2 ring-primary border-primary/50' : 'border-border/60'}`}
+                            className={`bg-white border rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:shadow-md transition-all select-none ${isSelected ? 'ring-2 ring-primary border-primary/50' : c.cardBorder}`}
                           >
                             <div className="flex items-start gap-2">
                               <Checkbox
