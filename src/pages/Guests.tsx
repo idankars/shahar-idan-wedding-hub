@@ -512,7 +512,7 @@ const Guests = () => {
 
   return (
     <div className="min-h-screen relative">
-      <FloatingPhotos count={5} seed={23} />
+      {viewMode !== 'table' && <FloatingPhotos count={6} seed={23} variant="upper" />}
       <WeddingHeader />
       <WeddingNav />
 

@@ -24,6 +24,8 @@ const PHOTOS = [
 interface FloatingPhotosProps {
   count?: number;
   seed?: number;
+  /** "default" spreads photos down the page; "upper" packs them near the top */
+  variant?: 'default' | 'upper';
 }
 
 const mulberry32 = (a: number) => {
@@ -36,66 +38,82 @@ const mulberry32 = (a: number) => {
 };
 
 // Photos live in the side gutters, OUTSIDE the centered max-w-4xl content (~896px wide).
-// They scroll with the page (absolute, not fixed) and are staggered top-to-bottom
-// so nothing overlaps. Each slot uses an absolute Y position in pixels.
-const SLOTS: Array<{ side: 'left' | 'right'; top: number }> = [
-  { side: 'left',  top: 80 },
-  { side: 'right', top: 140 },
-  { side: 'left',  top: 360 },
-  { side: 'right', top: 440 },
-  { side: 'left',  top: 680 },
-  { side: 'right', top: 760 },
-  { side: 'left',  top: 1000 },
-  { side: 'right', top: 1080 },
-  { side: 'left',  top: 1320 },
-  { side: 'right', top: 1400 },
+// They scroll with the page (absolute, not fixed). Top values start BELOW the
+// opaque WeddingHeader so nothing covers them.
+// `size` lets some photos be intentionally larger; `float` flips animation on/off.
+type Slot = { side: 'left' | 'right'; top: number; size: number; float: boolean };
+
+const SLOTS_DEFAULT: Slot[] = [
+  { side: 'left',  top: 260,  size: 210, float: true  },
+  { side: 'right', top: 300,  size: 140, float: false },
+  { side: 'left',  top: 540,  size: 150, float: false },
+  { side: 'right', top: 600,  size: 200, float: true  },
+  { side: 'left',  top: 840,  size: 175, float: true  },
+  { side: 'right', top: 920,  size: 135, float: false },
+  { side: 'left',  top: 1180, size: 145, float: false },
+  { side: 'right', top: 1240, size: 195, float: true  },
+  { side: 'left',  top: 1500, size: 165, float: false },
+  { side: 'right', top: 1560, size: 130, float: true  },
 ];
 
-const FloatingPhotos = ({ count = 6, seed = 42 }: FloatingPhotosProps) => {
+// Packed near the top — photos stay above the fold so they're visible
+// before the user starts scrolling.
+const SLOTS_UPPER: Slot[] = [
+  { side: 'left',  top: 240, size: 200, float: true  },
+  { side: 'right', top: 270, size: 175, float: false },
+  { side: 'left',  top: 470, size: 145, float: false },
+  { side: 'right', top: 500, size: 195, float: true  },
+  { side: 'left',  top: 700, size: 160, float: true  },
+  { side: 'right', top: 740, size: 135, float: false },
+  { side: 'left',  top: 930, size: 180, float: false },
+  { side: 'right', top: 970, size: 150, float: true  },
+];
+
+const FloatingPhotos = ({ count = 6, seed = 42, variant = 'default' }: FloatingPhotosProps) => {
   const items = useMemo(() => {
     const rand = mulberry32(seed);
     const shuffledPhotos = [...PHOTOS].sort(() => rand() - 0.5);
-    const slots = SLOTS.slice(0, Math.min(count, SLOTS.length));
+    const source = variant === 'upper' ? SLOTS_UPPER : SLOTS_DEFAULT;
+    const slots = source.slice(0, Math.min(count, source.length));
 
     return slots.map((slot, i) => {
       const src = shuffledPhotos[i % shuffledPhotos.length];
-      const rotate = (rand() * 16 - 8).toFixed(1);
-      const size = 110 + Math.floor(rand() * 40); // 110-150px
+      const rotate = (rand() * 14 - 7).toFixed(1);
       const delay = (rand() * 4).toFixed(2);
       const duration = (7 + rand() * 4).toFixed(2);
-      // Slight horizontal jitter inside the gutter
-      const sideJitter = Math.floor(rand() * 30);
+      const sideJitter = Math.floor(rand() * 24);
 
       return {
         src,
         side: slot.side,
         top: slot.top,
+        size: slot.size,
+        float: slot.float,
         sideJitter,
         rotate,
-        size,
         delay,
         duration,
       };
     });
-  }, [count, seed]);
+  }, [count, seed, variant]);
 
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute inset-0 overflow-hidden hidden xl:block"
-      style={{ zIndex: 1 }}
+      className="pointer-events-none absolute inset-0 hidden xl:block"
+      style={{ zIndex: 5 }}
     >
       {items.map((p, i) => (
         <div
           key={i}
-          className="absolute animate-float-photo"
+          className={p.float ? 'absolute animate-float-photo' : 'absolute'}
           style={{
             top: `${p.top}px`,
             // Push beyond the centered max-w-4xl (896px) content edge so photos
             // sit in the gutter and never overlap the cards/text.
             [p.side === 'left' ? 'right' : 'left']: `calc(50% + 470px + ${p.sideJitter}px)`,
-            animationDelay: `${p.delay}s`,
-            animationDuration: `${p.duration}s`,
+            animationDelay: p.float ? `${p.delay}s` : undefined,
+            animationDuration: p.float ? `${p.duration}s` : undefined,
           }}
         >
           <div
