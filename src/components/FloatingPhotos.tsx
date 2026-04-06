@@ -35,44 +35,42 @@ const mulberry32 = (a: number) => {
   };
 };
 
-// Fixed zones along left/right edges to prevent overlap.
-// Each zone is { side, topPct }. Photos placed at hard-coded slots,
-// scattered top-to-bottom but never on the central content area.
-const ZONES: Array<{ side: 'left' | 'right'; topPct: number }> = [
-  { side: 'left',  topPct: 2 },
-  { side: 'right', topPct: 5 },
-  { side: 'left',  topPct: 22 },
-  { side: 'right', topPct: 28 },
-  { side: 'left',  topPct: 46 },
-  { side: 'right', topPct: 52 },
-  { side: 'left',  topPct: 70 },
-  { side: 'right', topPct: 76 },
-  { side: 'left',  topPct: 88 },
-  { side: 'right', topPct: 92 },
+// Photos live in the side gutters, OUTSIDE the centered max-w-4xl content (~896px wide).
+// They scroll with the page (absolute, not fixed) and are staggered top-to-bottom
+// so nothing overlaps. Each slot uses an absolute Y position in pixels.
+const SLOTS: Array<{ side: 'left' | 'right'; top: number }> = [
+  { side: 'left',  top: 80 },
+  { side: 'right', top: 140 },
+  { side: 'left',  top: 360 },
+  { side: 'right', top: 440 },
+  { side: 'left',  top: 680 },
+  { side: 'right', top: 760 },
+  { side: 'left',  top: 1000 },
+  { side: 'right', top: 1080 },
+  { side: 'left',  top: 1320 },
+  { side: 'right', top: 1400 },
 ];
 
 const FloatingPhotos = ({ count = 6, seed = 42 }: FloatingPhotosProps) => {
   const items = useMemo(() => {
     const rand = mulberry32(seed);
     const shuffledPhotos = [...PHOTOS].sort(() => rand() - 0.5);
-    const zones = ZONES.slice(0, Math.min(count, ZONES.length));
+    const slots = SLOTS.slice(0, Math.min(count, SLOTS.length));
 
-    return zones.map((zone, i) => {
+    return slots.map((slot, i) => {
       const src = shuffledPhotos[i % shuffledPhotos.length];
-      const rotate = (rand() * 18 - 9).toFixed(1);
-      const size = 120 + Math.floor(rand() * 50); // 120-170px
+      const rotate = (rand() * 16 - 8).toFixed(1);
+      const size = 110 + Math.floor(rand() * 40); // 110-150px
       const delay = (rand() * 4).toFixed(2);
       const duration = (7 + rand() * 4).toFixed(2);
-      // Slight vertical jitter so they're not all in straight rows
-      const topJitter = (rand() * 6 - 3).toFixed(1);
-      // Pull just a bit off-screen so they peek in
-      const offset = Math.floor(size * 0.25);
+      // Slight horizontal jitter inside the gutter
+      const sideJitter = Math.floor(rand() * 30);
 
       return {
         src,
-        side: zone.side,
-        top: `calc(${zone.topPct}% + ${topJitter}px)`,
-        offset,
+        side: slot.side,
+        top: slot.top,
+        sideJitter,
         rotate,
         size,
         delay,
@@ -84,16 +82,18 @@ const FloatingPhotos = ({ count = 6, seed = 42 }: FloatingPhotosProps) => {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed inset-0 overflow-hidden hidden md:block"
-      style={{ zIndex: 45 }}
+      className="pointer-events-none absolute inset-0 overflow-hidden hidden xl:block"
+      style={{ zIndex: 1 }}
     >
       {items.map((p, i) => (
         <div
           key={i}
           className="absolute animate-float-photo"
           style={{
-            top: p.top,
-            [p.side]: `-${p.offset}px`,
+            top: `${p.top}px`,
+            // Push beyond the centered max-w-4xl (896px) content edge so photos
+            // sit in the gutter and never overlap the cards/text.
+            [p.side === 'left' ? 'right' : 'left']: `calc(50% + 470px + ${p.sideJitter}px)`,
             animationDelay: `${p.delay}s`,
             animationDuration: `${p.duration}s`,
           }}
