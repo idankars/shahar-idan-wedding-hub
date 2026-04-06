@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2, Edit2, Search, ArrowDownAZ, Clock, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Search, ArrowDownAZ, Clock, X, List, Columns3, ChevronLeft, ChevronRight, MoveRight, ClipboardPaste, GripVertical } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,21 +17,27 @@ import type { Guest } from '@/types/wedding';
 import { defaultSides } from '@/types/wedding';
 
 const CUSTOM_SIDES_KEY = 'wedding-custom-sides';
-const loadCustomSides = (): string[] => {
+const COLUMN_ORDER_KEY = 'wedding-column-order';
+const VIEW_MODE_KEY = 'wedding-guest-view-mode';
+
+const loadJSON = <T,>(key: string, fallback: T): T => {
   try {
-    const raw = localStorage.getItem(CUSTOM_SIDES_KEY);
-    return raw ? (JSON.parse(raw) as string[]) : [];
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
-    return [];
+    return fallback;
   }
 };
-const saveCustomSides = (sides: string[]) => {
+const saveJSON = (key: string, value: unknown) => {
   try {
-    localStorage.setItem(CUSTOM_SIDES_KEY, JSON.stringify(sides));
+    localStorage.setItem(key, JSON.stringify(value));
   } catch {
     // ignore
   }
 };
+
+const loadCustomSides = (): string[] => loadJSON<string[]>(CUSTOM_SIDES_KEY, []);
+const saveCustomSides = (s: string[]) => saveJSON(CUSTOM_SIDES_KEY, s);
 
 const emptyGuest: Omit<Guest, 'id'> = {
   name: '', phone: '', numberOfGuests: 1, side: 'משותף', status: 'ממתין', notes: '',
@@ -221,11 +229,18 @@ const Guests = () => {
   const [customSides, setCustomSides] = useState<string[]>(() => loadCustomSides());
   const [newSideOpen, setNewSideOpen] = useState(false);
   const [newSideName, setNewSideName] = useState('');
+  const [viewMode, setViewMode] = useState<'list' | 'table'>(() => loadJSON<'list' | 'table'>(VIEW_MODE_KEY, 'list'));
+  const [columnOrder, setColumnOrder] = useState<string[]>(() => loadJSON<string[]>(COLUMN_ORDER_KEY, []));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [dragOverSide, setDragOverSide] = useState<string | null>(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState('');
+  const [bulkSide, setBulkSide] = useState<string>('משותף');
 
-  // Persist custom sides to localStorage
-  useEffect(() => {
-    saveCustomSides(customSides);
-  }, [customSides]);
+  // Persist
+  useEffect(() => { saveCustomSides(customSides); }, [customSides]);
+  useEffect(() => { saveJSON(VIEW_MODE_KEY, viewMode); }, [viewMode]);
+  useEffect(() => { saveJSON(COLUMN_ORDER_KEY, columnOrder); }, [columnOrder]);
 
   // All available sides = defaults + custom + any unique sides found in existing guests
   const allSides = useMemo(() => {
@@ -233,6 +248,67 @@ const Guests = () => {
     guests.forEach((g) => g.side && set.add(g.side));
     return Array.from(set);
   }, [customSides, guests]);
+
+  // Effective column order: saved order first, then any new sides appended
+  const orderedSides = useMemo(() => {
+    const known = new Set(allSides);
+    const inOrder = columnOrder.filter((s) => known.has(s));
+    const rest = allSides.filter((s) => !inOrder.includes(s));
+    return [...inOrder, ...rest];
+  }, [allSides, columnOrder]);
+
+  const moveColumn = (side: string, dir: -1 | 1) => {
+    const idx = orderedSides.indexOf(side);
+    if (idx < 0) return;
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= orderedSides.length) return;
+    const next = [...orderedSides];
+    [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+    setColumnOrder(next);
+  };
+
+  // ── Multi-select & bulk move ──
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+  const moveSelectedTo = (side: string) => {
+    if (selectedIds.size === 0) return;
+    setGuests(guests.map((g) => (selectedIds.has(g.id) ? { ...g, side } : g)));
+    clearSelection();
+  };
+
+  // ── Drag handlers ──
+  const handleDragStart = (e: React.DragEvent, guestId: string) => {
+    // If dragging a non-selected card, replace selection with just this one
+    if (!selectedIds.has(guestId)) {
+      setSelectedIds(new Set([guestId]));
+    }
+    e.dataTransfer.effectAllowed = 'move';
+    // Set a payload so DnD works in all browsers
+    e.dataTransfer.setData('text/plain', guestId);
+  };
+  const handleColumnDragOver = (e: React.DragEvent, side: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverSide !== side) setDragOverSide(side);
+  };
+  const handleColumnDragLeave = () => setDragOverSide(null);
+  const handleColumnDrop = (e: React.DragEvent, side: string) => {
+    e.preventDefault();
+    setDragOverSide(null);
+    // If selection is empty (rare), use the dragged ID from payload
+    const draggedId = e.dataTransfer.getData('text/plain');
+    if (selectedIds.size === 0 && draggedId) {
+      setGuests(guests.map((g) => (g.id === draggedId ? { ...g, side } : g)));
+    } else {
+      moveSelectedTo(side);
+    }
+  };
 
   const handleAddCustomSide = () => {
     const name = newSideName.trim();
@@ -270,6 +346,48 @@ const Guests = () => {
 
   const handleDelete = (id: string) => {
     setGuests(guests.filter((g) => g.id !== id));
+  };
+
+  const handleBulkPaste = () => {
+    const lines = bulkText.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const newGuests: Guest[] = [];
+    for (const line of lines) {
+      // Split by tab, comma, or multiple spaces
+      const parts = line.split(/\t|,|\s{2,}/).map((p) => p.trim()).filter(Boolean);
+      if (parts.length === 0) continue;
+      // Find a phone-looking part
+      let name = '';
+      let phone = '';
+      let count = 1;
+      for (const p of parts) {
+        const digits = normalizePhone(p);
+        if (!phone && (PHONE_RE.test(p) || (digits.length >= 9 && digits.length <= 13))) {
+          phone = p;
+        } else if (!name && /[\u0590-\u05FFa-zA-Z]/.test(p)) {
+          name = p;
+        } else if (/^\d{1,2}$/.test(p) && parseInt(p) <= 30) {
+          count = parseInt(p);
+        } else if (name) {
+          name += ' ' + p;
+        }
+      }
+      if (!name) name = parts[0];
+      if (!name) continue;
+      newGuests.push({
+        id: crypto.randomUUID(),
+        name,
+        phone,
+        numberOfGuests: count,
+        side: bulkSide,
+        status: 'ממתין',
+        notes: '',
+      });
+    }
+    if (newGuests.length > 0) {
+      setGuests([...guests, ...newGuests]);
+    }
+    setBulkText('');
+    setBulkOpen(false);
   };
 
   const handleImport = (items: Omit<Guest, 'id'>[]) => {
@@ -385,8 +503,8 @@ const Guests = () => {
           </div>
         </div>
 
-        <div className="flex gap-2 items-center">
-          <div className="relative flex-1">
+        <div className="flex gap-2 items-center flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={search}
@@ -404,44 +522,242 @@ const Guests = () => {
             {sortAlpha ? <ArrowDownAZ className="h-4 w-4 text-primary" /> : <Clock className="h-4 w-4" />}
             <span className="hidden sm:inline text-sm">{sortAlpha ? 'א-ב' : 'לפי הוספה'}</span>
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setBulkOpen(true)}
+            className="gap-2 shrink-0"
+            title="הוספה מרובה — הדבק רשימה של שמות"
+          >
+            <ClipboardPaste className="h-4 w-4" />
+            <span className="hidden sm:inline text-sm">הדבק רשימה</span>
+          </Button>
+          <div className="flex rounded-md border bg-card overflow-hidden shrink-0">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-2 transition-colors ${viewMode === 'list' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+              title="תצוגת רשימה"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode('table')}
+              className={`px-3 py-2 transition-colors ${viewMode === 'table' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted'}`}
+              title="תצוגת טבלה לפי קטגוריות"
+            >
+              <Columns3 className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-2">
-          {filtered.length === 0 && (
-            <Card className="border-dashed">
-              <CardContent className="py-12 text-center text-muted-foreground font-body">
-                {guests.length === 0 ? 'עדיין אין מוזמנים. הוסיפו את המוזמן הראשון או ייבאו מקובץ!' : 'לא נמצאו תוצאות'}
-              </CardContent>
-            </Card>
-          )}
-          {filtered.map((guest) => (
-            <Card key={guest.id} className="animate-fade-in hover:shadow-md transition-shadow">
-              <CardContent className="flex items-center justify-between py-4 gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium">{guest.name}</p>
-                    <Badge variant="outline" className={statusColors[guest.status]}>{guest.status}</Badge>
-                    <Badge variant="outline" className="text-xs bg-primary/5">{guest.side}</Badge>
-                  </div>
-                  <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-                    {guest.phone && <span dir="ltr">{guest.phone}</span>}
-                    <span>{guest.numberOfGuests} אורחים</span>
-                    {guest.notes && <span>· {guest.notes}</span>}
-                  </div>
+        {selectedIds.size > 0 && (
+          <div className="sticky top-2 z-20 flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-lg px-4 py-2 backdrop-blur-sm animate-fade-in">
+            <span className="text-sm font-medium">{selectedIds.size} נבחרו</span>
+            <Select onValueChange={(v) => moveSelectedTo(v)}>
+              <SelectTrigger className="h-8 w-44 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <MoveRight className="h-3.5 w-3.5" />
+                  <SelectValue placeholder="העבר לקטגוריה..." />
                 </div>
-                <div className="flex gap-1">
-                  <Button size="icon" variant="ghost" onClick={() => handleEdit(guest)}>
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost" onClick={() => handleDelete(guest.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              </SelectTrigger>
+              <SelectContent>
+                {allSides.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button size="sm" variant="ghost" onClick={clearSelection} className="h-7 gap-1">
+              <X className="h-3.5 w-3.5" />
+              נקה
+            </Button>
+            <span className="text-xs text-muted-foreground hidden md:inline mr-auto">טיפ: גרור את הכרטיסים אל קטגוריה כדי להעביר</span>
+          </div>
+        )}
+
+        {viewMode === 'list' && (
+          <div className="space-y-2">
+            {filtered.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="py-12 text-center text-muted-foreground font-body">
+                  {guests.length === 0 ? 'עדיין אין מוזמנים. הוסיפו את המוזמן הראשון או ייבאו מקובץ!' : 'לא נמצאו תוצאות'}
+                </CardContent>
+              </Card>
+            )}
+            {filtered.map((guest) => {
+              const isSelected = selectedIds.has(guest.id);
+              return (
+                <Card
+                  key={guest.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, guest.id)}
+                  className={`animate-fade-in hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing ${isSelected ? 'ring-2 ring-primary border-primary/50' : ''}`}
+                >
+                  <CardContent className="flex items-center justify-between py-4 gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(guest.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <GripVertical className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium">{guest.name}</p>
+                          <Badge variant="outline" className={statusColors[guest.status]}>{guest.status}</Badge>
+                          <Badge variant="outline" className="text-xs bg-primary/5">{guest.side}</Badge>
+                        </div>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+                          {guest.phone && <span dir="ltr">{guest.phone}</span>}
+                          <span>{guest.numberOfGuests} אורחים</span>
+                          {guest.notes && <span>· {guest.notes}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" onClick={() => handleEdit(guest)}>
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" onClick={() => handleDelete(guest.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+
+        {viewMode === 'table' && (
+          <div className="overflow-x-auto -mx-4 px-4 pb-4">
+            <div className="flex gap-3 min-w-min">
+              {orderedSides.map((side, idx) => {
+                const colGuests = filtered.filter((g) => g.side === side);
+                const isOver = dragOverSide === side;
+                return (
+                  <div
+                    key={side}
+                    onDragOver={(e) => handleColumnDragOver(e, side)}
+                    onDragLeave={handleColumnDragLeave}
+                    onDrop={(e) => handleColumnDrop(e, side)}
+                    className={`w-64 shrink-0 rounded-xl border bg-muted/30 transition-colors ${isOver ? 'border-primary bg-primary/10' : 'border-border/50'}`}
+                  >
+                    <div className="flex items-center justify-between gap-1 px-3 py-2 border-b border-border/50 bg-card/50 rounded-t-xl">
+                      <button
+                        onClick={() => moveColumn(side, -1)}
+                        disabled={idx === 0}
+                        className="p-1 rounded hover:bg-muted disabled:opacity-30"
+                        title="הזז ימינה"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </button>
+                      <div className="flex-1 text-center">
+                        <p className="text-sm font-medium truncate">{side}</p>
+                        <p className="text-xs text-muted-foreground">{colGuests.length}</p>
+                      </div>
+                      <button
+                        onClick={() => moveColumn(side, 1)}
+                        disabled={idx === orderedSides.length - 1}
+                        className="p-1 rounded hover:bg-muted disabled:opacity-30"
+                        title="הזז שמאלה"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div className="p-2 space-y-2 min-h-[120px]">
+                      {colGuests.length === 0 && (
+                        <p className="text-xs text-muted-foreground/60 text-center py-6">גרור לכאן</p>
+                      )}
+                      {colGuests.map((guest) => {
+                        const isSelected = selectedIds.has(guest.id);
+                        return (
+                          <div
+                            key={guest.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, guest.id)}
+                            className={`bg-card border rounded-lg p-2.5 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all ${isSelected ? 'ring-2 ring-primary border-primary/50' : 'border-border/60'}`}
+                          >
+                            <div className="flex items-start gap-2">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => toggleSelect(guest.id)}
+                                onClick={(e) => e.stopPropagation()}
+                                className="mt-0.5"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{guest.name}</p>
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                  <Badge variant="outline" className={`text-[10px] py-0 px-1.5 ${statusColors[guest.status]}`}>
+                                    {guest.status}
+                                  </Badge>
+                                  <span className="text-[10px] text-muted-foreground">{guest.numberOfGuests} אורחים</span>
+                                </div>
+                                {guest.phone && <p className="text-[10px] text-muted-foreground mt-0.5" dir="ltr">{guest.phone}</p>}
+                              </div>
+                              <button
+                                onClick={() => handleEdit(guest)}
+                                className="text-muted-foreground hover:text-foreground p-0.5"
+                                title="ערוך"
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* Bulk paste dialog */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="font-body sm:max-w-lg" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="font-display">הוספה מרובה</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              הדבק רשימה של מוזמנים — שורה לכל אחד. אפשר לכלול גם טלפון ומספר אורחים, מופרדים ברווח/פסיק/טאב.
+            </p>
+            <div className="grid gap-2">
+              <Label>קטגוריה לכולם</Label>
+              <Select value={bulkSide} onValueChange={setBulkSide}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {allSides.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>רשימה</Label>
+              <Textarea
+                value={bulkText}
+                onChange={(e) => setBulkText(e.target.value)}
+                placeholder={'יוסי כהן\nרחל לוי, 0501234567\nדני אבני 0521112222 2'}
+                className="min-h-[180px] font-mono text-sm"
+                dir="rtl"
+              />
+              <p className="text-xs text-muted-foreground">
+                {bulkText.split(/\r?\n/).filter((l) => l.trim()).length} שורות יתווספו
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">ביטול</Button>
+            </DialogClose>
+            <Button onClick={handleBulkPaste} disabled={!bulkText.trim()}>
+              הוסף הכל
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Add custom side dialog */}
       <Dialog open={newSideOpen} onOpenChange={setNewSideOpen}>

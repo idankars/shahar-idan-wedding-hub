@@ -8,7 +8,19 @@ export interface Guest {
   notes: string;
 }
 
-export const defaultSides = ['חתן', 'כלה', 'משותף', 'הורי שחר', 'הורי עידן'] as const;
+export const defaultSides = [
+  'משפחה שחר',
+  'משפחה עידן',
+  'חברים שחר',
+  'חברים עידן',
+  'עבודה שחר',
+  'עבודה עידן',
+  'לימודים שחר',
+  'לימודים עידן',
+  'צבא שחר',
+  'צבא עידן',
+  'משותף',
+] as const;
 
 export interface Vendor {
   id: string;
