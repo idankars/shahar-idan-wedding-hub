@@ -292,31 +292,35 @@ const Guests = () => {
     const top = topScrollRef.current;
     if (!bottom || !top) return;
 
-    const updateWidth = () => setTableContentWidth(bottom.scrollWidth);
-    updateWidth();
+    // Measure once after render
+    const measure = () => {
+      try {
+        setTableContentWidth(bottom.scrollWidth);
+      } catch {
+        /* ignore */
+      }
+    };
+    const t = window.setTimeout(measure, 0);
 
-    let syncing = false;
+    let isSyncing = false;
     const onBottom = () => {
-      if (syncing) return;
-      syncing = true;
+      if (isSyncing) return;
+      isSyncing = true;
       top.scrollLeft = bottom.scrollLeft;
-      syncing = false;
+      window.requestAnimationFrame(() => { isSyncing = false; });
     };
     const onTop = () => {
-      if (syncing) return;
-      syncing = true;
+      if (isSyncing) return;
+      isSyncing = true;
       bottom.scrollLeft = top.scrollLeft;
-      syncing = false;
+      window.requestAnimationFrame(() => { isSyncing = false; });
     };
-    bottom.addEventListener('scroll', onBottom);
-    top.addEventListener('scroll', onTop);
-    const ro = new ResizeObserver(updateWidth);
-    ro.observe(bottom);
-    Array.from(bottom.children[0]?.children ?? []).forEach((c) => ro.observe(c));
+    bottom.addEventListener('scroll', onBottom, { passive: true });
+    top.addEventListener('scroll', onTop, { passive: true });
     return () => {
+      window.clearTimeout(t);
       bottom.removeEventListener('scroll', onBottom);
       top.removeEventListener('scroll', onTop);
-      ro.disconnect();
     };
   }, [viewMode, orderedSides.length, guests.length]);
 
@@ -503,6 +507,7 @@ const Guests = () => {
 
   const totalAttending = guests.filter(g => g.status === 'מאשר').reduce((s, g) => s + (g.numberOfGuests || 1), 0);
   const totalPeople = guests.reduce((s, g) => s + (g.numberOfGuests || 1), 0);
+  const listIds = useMemo(() => filtered.map((g) => g.id), [filtered]);
 
   return (
     <div className="min-h-screen">
@@ -681,9 +686,7 @@ const Guests = () => {
                 </CardContent>
               </Card>
             )}
-            {(() => {
-              const listIds = filtered.map((g) => g.id);
-              return filtered.map((guest) => {
+            {filtered.map((guest) => {
               const isSelected = selectedIds.has(guest.id);
               return (
                 <Card
@@ -737,8 +740,7 @@ const Guests = () => {
                   </CardContent>
                 </Card>
               );
-            });
-            })()}
+            })}
           </div>
         )}
 
