@@ -285,6 +285,27 @@ const Guests = () => {
   useEffect(() => { saveJSON(VIEW_MODE_KEY, viewMode); }, [viewMode]);
   useEffect(() => { saveJSON(COLUMN_ORDER_KEY, columnOrder); }, [columnOrder]);
 
+  const scrollTable = (dir: -1 | 1) => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * 320, behavior: 'smooth' });
+  };
+
+  // All available sides = defaults + custom + any unique sides found in existing guests
+  const allSides = useMemo(() => {
+    const set = new Set<string>([...defaultSides, ...customSides]);
+    guests.forEach((g) => g.side && set.add(g.side));
+    return Array.from(set);
+  }, [customSides, guests]);
+
+  // Effective column order: saved order first, then any new sides appended
+  const orderedSides = useMemo(() => {
+    const known = new Set(allSides);
+    const inOrder = columnOrder.filter((s) => known.has(s));
+    const rest = allSides.filter((s) => !inOrder.includes(s));
+    return [...inOrder, ...rest];
+  }, [allSides, columnOrder]);
+
   // Sync top & bottom scrollbars for table view
   useEffect(() => {
     if (viewMode !== 'table') return;
@@ -323,27 +344,6 @@ const Guests = () => {
       top.removeEventListener('scroll', onTop);
     };
   }, [viewMode, orderedSides.length, guests.length]);
-
-  const scrollTable = (dir: -1 | 1) => {
-    const el = tableScrollRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * 320, behavior: 'smooth' });
-  };
-
-  // All available sides = defaults + custom + any unique sides found in existing guests
-  const allSides = useMemo(() => {
-    const set = new Set<string>([...defaultSides, ...customSides]);
-    guests.forEach((g) => g.side && set.add(g.side));
-    return Array.from(set);
-  }, [customSides, guests]);
-
-  // Effective column order: saved order first, then any new sides appended
-  const orderedSides = useMemo(() => {
-    const known = new Set(allSides);
-    const inOrder = columnOrder.filter((s) => known.has(s));
-    const rest = allSides.filter((s) => !inOrder.includes(s));
-    return [...inOrder, ...rest];
-  }, [allSides, columnOrder]);
 
   const moveColumn = (side: string, dir: -1 | 1) => {
     const idx = orderedSides.indexOf(side);
