@@ -44,16 +44,14 @@ const mulberry32 = (a: number) => {
 type Slot = { side: 'left' | 'right'; top: number; size: number; float: boolean };
 
 const SLOTS_DEFAULT: Slot[] = [
-  { side: 'left',  top: 260,  size: 210, float: true  },
-  { side: 'right', top: 300,  size: 140, float: false },
-  { side: 'left',  top: 540,  size: 150, float: false },
-  { side: 'right', top: 600,  size: 200, float: true  },
-  { side: 'left',  top: 840,  size: 175, float: true  },
-  { side: 'right', top: 920,  size: 135, float: false },
-  { side: 'left',  top: 1180, size: 145, float: false },
-  { side: 'right', top: 1240, size: 195, float: true  },
-  { side: 'left',  top: 1500, size: 165, float: false },
-  { side: 'right', top: 1560, size: 130, float: true  },
+  { side: 'left',  top: 260, size: 200, float: true  },
+  { side: 'right', top: 290, size: 140, float: false },
+  { side: 'left',  top: 480, size: 145, float: false },
+  { side: 'right', top: 520, size: 195, float: true  },
+  { side: 'left',  top: 720, size: 170, float: true  },
+  { side: 'right', top: 760, size: 135, float: false },
+  { side: 'left',  top: 940, size: 150, float: false },
+  { side: 'right', top: 970, size: 180, float: true  },
 ];
 
 // Packed near the top — photos stay above the fold so they're visible
@@ -101,7 +99,7 @@ const FloatingPhotos = ({ count = 6, seed = 42, variant = 'default' }: FloatingP
     <div
       aria-hidden
       className="pointer-events-none absolute inset-0 hidden xl:block"
-      style={{ zIndex: 5 }}
+      style={{ zIndex: 50 }}
     >
       {items.map((p, i) => (
         <div
