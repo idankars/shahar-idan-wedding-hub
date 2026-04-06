@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Edit2, Search, ArrowDownAZ, Clock, X, List, Columns3, ChevronLeft, ChevronRight, MoveRight, ClipboardPaste, GripVertical } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
@@ -234,6 +234,9 @@ const Guests = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
   const [dragOverSide, setDragOverSide] = useState<string | null>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const [tableContentWidth, setTableContentWidth] = useState(0);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [bulkSide, setBulkSide] = useState<string>('משותף');
@@ -242,6 +245,47 @@ const Guests = () => {
   useEffect(() => { saveCustomSides(customSides); }, [customSides]);
   useEffect(() => { saveJSON(VIEW_MODE_KEY, viewMode); }, [viewMode]);
   useEffect(() => { saveJSON(COLUMN_ORDER_KEY, columnOrder); }, [columnOrder]);
+
+  // Sync top & bottom scrollbars for table view
+  useEffect(() => {
+    if (viewMode !== 'table') return;
+    const bottom = tableScrollRef.current;
+    const top = topScrollRef.current;
+    if (!bottom || !top) return;
+
+    const updateWidth = () => setTableContentWidth(bottom.scrollWidth);
+    updateWidth();
+
+    let syncing = false;
+    const onBottom = () => {
+      if (syncing) return;
+      syncing = true;
+      top.scrollLeft = bottom.scrollLeft;
+      syncing = false;
+    };
+    const onTop = () => {
+      if (syncing) return;
+      syncing = true;
+      bottom.scrollLeft = top.scrollLeft;
+      syncing = false;
+    };
+    bottom.addEventListener('scroll', onBottom);
+    top.addEventListener('scroll', onTop);
+    const ro = new ResizeObserver(updateWidth);
+    ro.observe(bottom);
+    Array.from(bottom.children[0]?.children ?? []).forEach((c) => ro.observe(c));
+    return () => {
+      bottom.removeEventListener('scroll', onBottom);
+      top.removeEventListener('scroll', onTop);
+      ro.disconnect();
+    };
+  }, [viewMode, orderedSides.length, guests.length]);
+
+  const scrollTable = (dir: -1 | 1) => {
+    const el = tableScrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * 320, behavior: 'smooth' });
+  };
 
   // All available sides = defaults + custom + any unique sides found in existing guests
   const allSides = useMemo(() => {
@@ -659,8 +703,38 @@ const Guests = () => {
         )}
 
         {viewMode === 'table' && (
-          <div className="overflow-x-auto -mx-4 px-4 pb-4">
-            <div className="flex gap-3 min-w-min">
+          <div className="relative -mx-4">
+            {/* Top scrollbar (mirrors bottom) */}
+            <div
+              ref={topScrollRef}
+              className="overflow-x-auto overflow-y-hidden mx-4"
+              style={{ height: 14 }}
+            >
+              <div style={{ width: tableContentWidth, height: 1 }} />
+            </div>
+
+            {/* Left arrow */}
+            <button
+              onClick={() => scrollTable(-1)}
+              className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-card/90 backdrop-blur-sm border border-border shadow-md hover:bg-card hover:shadow-lg transition-all flex items-center justify-center text-foreground"
+              title="גלול ימינה"
+              aria-label="גלול ימינה"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+
+            {/* Right arrow */}
+            <button
+              onClick={() => scrollTable(1)}
+              className="absolute left-1 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-card/90 backdrop-blur-sm border border-border shadow-md hover:bg-card hover:shadow-lg transition-all flex items-center justify-center text-foreground"
+              title="גלול שמאלה"
+              aria-label="גלול שמאלה"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+
+            <div ref={tableScrollRef} className="overflow-x-auto px-4 pb-4 pt-1">
+              <div className="flex gap-3 min-w-min">
               {orderedSides.map((side, idx) => {
                 const colGuests = filtered.filter((g) => g.side === side);
                 const colIds = colGuests.map((g) => g.id);
@@ -760,6 +834,7 @@ const Guests = () => {
                 <Plus className="h-6 w-6" />
                 <span className="text-sm font-medium">הוסף קטגוריה</span>
               </button>
+              </div>
             </div>
           </div>
         )}
