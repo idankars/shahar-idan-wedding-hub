@@ -24,8 +24,13 @@ const PHOTOS = [
 interface FloatingPhotosProps {
   count?: number;
   seed?: number;
-  /** "default" spreads photos down the page; "upper" packs them near the top */
-  variant?: 'default' | 'upper';
+  /**
+   * - "default" spreads photos down the page
+   * - "upper" packs them near the top
+   * - "header" places them tucked into the page header area only (safe for full-width
+   *   table layouts where the rest of the page has no gutters)
+   */
+  variant?: 'default' | 'upper' | 'header';
 }
 
 const mulberry32 = (a: number) => {
@@ -54,6 +59,16 @@ const SLOTS_DEFAULT: Slot[] = [
   { side: 'right', top: 970, size: 180, float: true  },
 ];
 
+// Tucked inside the WeddingHeader band only (top < ~200px). Used on pages
+// that have full-width content (e.g. the Guests table) where there are no
+// side gutters below the header.
+const SLOTS_HEADER: Slot[] = [
+  { side: 'left',  top: 30, size: 140, float: false },
+  { side: 'right', top: 25, size: 130, float: true  },
+  { side: 'left',  top: 95, size: 115, float: true  },
+  { side: 'right', top: 100, size: 145, float: false },
+];
+
 // Packed near the top — photos stay above the fold so they're visible
 // before the user starts scrolling.
 const SLOTS_UPPER: Slot[] = [
@@ -71,8 +86,17 @@ const FloatingPhotos = ({ count = 6, seed = 42, variant = 'default' }: FloatingP
   const items = useMemo(() => {
     const rand = mulberry32(seed);
     const shuffledPhotos = [...PHOTOS].sort(() => rand() - 0.5);
-    const source = variant === 'upper' ? SLOTS_UPPER : SLOTS_DEFAULT;
+    const source =
+      variant === 'header' ? SLOTS_HEADER :
+      variant === 'upper'  ? SLOTS_UPPER  :
+      SLOTS_DEFAULT;
     const slots = source.slice(0, Math.min(count, source.length));
+
+    // How far the photo's near edge sits from horizontal center.
+    // For default/upper we push past the max-w-4xl content edge (~448px).
+    // For header we tuck in closer so photos hug the title band but stay
+    // clear of the centered "שחר ♥ עידן" text.
+    const baseOffset = variant === 'header' ? 320 : 470;
 
     return slots.map((slot, i) => {
       const src = shuffledPhotos[i % shuffledPhotos.length];
@@ -91,6 +115,7 @@ const FloatingPhotos = ({ count = 6, seed = 42, variant = 'default' }: FloatingP
         rotate,
         delay,
         duration,
+        baseOffset,
       };
     });
   }, [count, seed, variant]);
@@ -109,7 +134,7 @@ const FloatingPhotos = ({ count = 6, seed = 42, variant = 'default' }: FloatingP
             top: `${p.top}px`,
             // Push beyond the centered max-w-4xl (896px) content edge so photos
             // sit in the gutter and never overlap the cards/text.
-            [p.side === 'left' ? 'right' : 'left']: `calc(50% + 470px + ${p.sideJitter}px)`,
+            [p.side === 'left' ? 'right' : 'left']: `calc(50% + ${p.baseOffset}px + ${p.sideJitter}px)`,
             animationDelay: p.float ? `${p.delay}s` : undefined,
             animationDuration: p.float ? `${p.duration}s` : undefined,
           }}
