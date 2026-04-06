@@ -31,6 +31,8 @@ export interface Vendor {
   paid: number;
   status: 'בתהליך' | 'סגור' | 'שולם' | 'בוטל';
   notes: string;
+  contractUrl?: string | null;
+  contractName?: string | null;
 }
 
 export const vendorTypes = [

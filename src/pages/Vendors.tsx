@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { Plus, Trash2, Edit2, Search, Wallet, TrendingUp } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Plus, Trash2, Edit2, Search, Wallet, TrendingUp, FileText, Upload, X, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,10 @@ import { vendorTypes } from '@/types/wedding';
 
 const emptyVendor: Omit<Vendor, 'id'> = {
   name: '', type: 'צלם', phone: '', price: 0, paid: 0, status: 'בתהליך', notes: '',
+  contractUrl: null, contractName: null,
 };
+
+const CONTRACTS_BUCKET = 'contracts';
 
 const statusColors: Record<Vendor['status'], string> = {
   'בתהליך': 'bg-amber-100 text-amber-700 border-amber-200',
@@ -56,11 +60,40 @@ const Vendors = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleContractUpload = async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop() || 'pdf';
+      const path = `${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from(CONTRACTS_BUCKET)
+        .upload(path, file, { upsert: false });
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        alert('שגיאה בהעלאת הקובץ: ' + uploadError.message);
+        return;
+      }
+      const { data } = supabase.storage.from(CONTRACTS_BUCKET).getPublicUrl(path);
+      setForm((f) => ({ ...f, contractUrl: data.publicUrl, contractName: file.name }));
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveContract = () => {
+    setForm((f) => ({ ...f, contractUrl: null, contractName: null }));
+  };
 
   // Migrate old vendors without 'paid' field
   const migratedVendors = vendors.map(v => ({
     ...v,
     paid: v.paid ?? 0,
+    contractUrl: v.contractUrl ?? null,
+    contractName: v.contractName ?? null,
   }));
 
   const handleSave = () => {
@@ -179,6 +212,58 @@ const Vendors = () => {
                     <Label>הערות</Label>
                     <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="הערות (אופציונלי)" />
                   </div>
+                  <div className="grid gap-2">
+                    <Label>חוזה</Label>
+                    {form.contractUrl ? (
+                      <div className="flex items-center gap-2 p-2 rounded-md border border-border bg-muted/40">
+                        <FileText className="h-4 w-4 text-primary shrink-0" />
+                        <a
+                          href={form.contractUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm flex-1 truncate hover:underline"
+                        >
+                          {form.contractName || 'חוזה'}
+                        </a>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={handleRemoveContract}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,image/*,application/pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleContractUpload(file);
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="gap-2"
+                          disabled={uploading}
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          {uploading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          {uploading ? 'מעלה...' : 'העלה חוזה (PDF / תמונה)'}
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <DialogFooter>
                   <DialogClose asChild>
@@ -292,6 +377,17 @@ const Vendors = () => {
                       )}
                       {vendor.notes && (
                         <p className="text-xs text-muted-foreground">{vendor.notes}</p>
+                      )}
+                      {vendor.contractUrl && (
+                        <a
+                          href={vendor.contractUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          {vendor.contractName || 'צפה בחוזה'}
+                        </a>
                       )}
                     </div>
                     <div className="flex gap-1 shrink-0">
