@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import WeddingHeader from '@/components/WeddingHeader';
 import WeddingNav from '@/components/WeddingNav';
+import FloatingPhotos from '@/components/FloatingPhotos';
 import FileImport from '@/components/FileImport';
 import { useSupabaseTable } from '@/hooks/useSupabaseTable';
 import type { Vendor } from '@/types/wedding';
@@ -99,11 +100,12 @@ const Vendors = () => {
   const paidPercent = totalBudget > 0 ? Math.min((paidTotal / totalBudget) * 100, 100) : 0;
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative">
+      <FloatingPhotos count={5} seed={91} />
       <WeddingHeader />
       <WeddingNav />
 
-      <main className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
+      <main className="container max-w-4xl mx-auto py-8 px-4 space-y-6 relative">
         {/* Header */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>

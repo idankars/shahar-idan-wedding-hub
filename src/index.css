@@ -148,4 +148,13 @@
     50% { transform: translateY(-4px); }
   }
   .animate-float-gentle { animation: float-gentle 5s ease-in-out infinite; }
+
+  @keyframes float-photo {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-14px); }
+  }
+  .animate-float-photo {
+    animation: float-photo 7s ease-in-out infinite;
+    will-change: transform;
+  }
 }

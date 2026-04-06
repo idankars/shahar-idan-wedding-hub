@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import WeddingHeader from '@/components/WeddingHeader';
 import WeddingNav from '@/components/WeddingNav';
+import FloatingPhotos from '@/components/FloatingPhotos';
 import { useSupabaseTable } from '@/hooks/useSupabaseTable';
 import type { Guest, Vendor } from '@/types/wedding';
 
@@ -25,7 +26,8 @@ const Index = () => {
   const monthsLeft = Math.floor(daysLeft / 30);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative">
+      <FloatingPhotos count={10} seed={7} />
       <WeddingHeader />
       <WeddingNav />
 

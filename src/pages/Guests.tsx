@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import WeddingHeader from '@/components/WeddingHeader';
 import WeddingNav from '@/components/WeddingNav';
+import FloatingPhotos from '@/components/FloatingPhotos';
 import FileImport from '@/components/FileImport';
 import { useSupabaseTable } from '@/hooks/useSupabaseTable';
 import type { Guest } from '@/types/wedding';
@@ -510,11 +511,12 @@ const Guests = () => {
   const listIds = useMemo(() => filtered.map((g) => g.id), [filtered]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen relative">
+      <FloatingPhotos count={5} seed={23} />
       <WeddingHeader />
       <WeddingNav />
 
-      <main className={`container mx-auto py-8 px-4 space-y-6 ${viewMode === 'table' ? 'max-w-none' : 'max-w-4xl'}`}>
+      <main className={`container mx-auto py-8 px-4 space-y-6 relative ${viewMode === 'table' ? 'max-w-none' : 'max-w-4xl'}`}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-2xl font-display">רשימת מוזמנים</h2>
