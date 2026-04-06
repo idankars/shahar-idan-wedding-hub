@@ -46,6 +46,154 @@ const parseGuestRow = (row: Record<string, string>): Omit<Guest, 'id'> | null =>
   };
 };
 
+// ── Smart auto-detection for guests CSV/Excel ───────────────────────────────
+// Sniffs values column-by-column and figures out which one is name/phone/etc.
+// Works even when there are no headers, headers are weird, or columns are reordered.
+const PHONE_RE = /(?:\+?972[-\s]?|0)5\d[-\s]?\d{3}[-\s]?\d{4}|^\d{9,11}$/;
+const SIDE_TOKENS = ['חתן', 'כלה', 'משותף', 'groom', 'bride', 'shared'];
+const STATUS_TOKENS: Record<string, Guest['status']> = {
+  'מאשר': 'מאשר', 'מאשרים': 'מאשר', 'מגיע': 'מאשר', 'מאושר': 'מאשר', 'כן': 'מאשר', 'yes': 'מאשר', 'confirmed': 'מאשר', 'v': 'מאשר', '✓': 'מאשר',
+  'לא': 'לא מגיע', 'לא מגיע': 'לא מגיע', 'מסרב': 'לא מגיע', 'no': 'לא מגיע', 'declined': 'לא מגיע', 'x': 'לא מגיע',
+  'ממתין': 'ממתין', 'אולי': 'ממתין', 'maybe': 'ממתין', 'pending': 'ממתין', '?': 'ממתין',
+};
+const SIDE_MAP: Record<string, Guest['side']> = {
+  'חתן': 'חתן', 'groom': 'חתן',
+  'כלה': 'כלה', 'bride': 'כלה',
+  'משותף': 'משותף', 'shared': 'משותף', 'both': 'משותף', 'משותפים': 'משותף',
+};
+
+const isProbablyHeader = (row: string[]): boolean => {
+  if (!row || row.length === 0) return false;
+  const text = row.join(' ').toLowerCase();
+  if (/שם|name|טלפון|phone|אורח|guest|צד|side|סטטוס|status|הערות|note/.test(text)) return true;
+  // Header rows usually have no numbers
+  const hasDigit = row.some((c) => /\d/.test(c));
+  return !hasDigit;
+};
+
+const normalizePhone = (s: string): string => s.replace(/[^\d+]/g, '');
+
+const detectColumnTypes = (rows: string[][]): { name: number; phone: number; count: number; side: number; status: number; notes: number } => {
+  const numCols = Math.max(...rows.map((r) => r.length), 0);
+  const types = { name: -1, phone: -1, count: -1, side: -1, status: -1, notes: -1 };
+
+  type ColScore = { phone: number; count: number; side: number; status: number; nameLikelihood: number; avgLen: number; nonEmpty: number };
+  const scores: ColScore[] = [];
+
+  for (let c = 0; c < numCols; c++) {
+    const values = rows.map((r) => (r[c] ?? '').trim()).filter(Boolean);
+    const total = values.length || 1;
+    let phone = 0, count = 0, side = 0, status = 0;
+    let totalLen = 0;
+    let nameLikelihood = 0;
+
+    for (const v of values) {
+      const lower = v.toLowerCase();
+      totalLen += v.length;
+
+      // Phone: contains many digits or matches phone regex
+      const digits = normalizePhone(v);
+      if (PHONE_RE.test(v) || (digits.length >= 9 && digits.length <= 13)) phone++;
+      // Count: small integer 1-30
+      else if (/^\d{1,2}$/.test(v) && parseInt(v) <= 30 && parseInt(v) > 0) count++;
+
+      if (SIDE_TOKENS.some((t) => lower.includes(t))) side++;
+      if (Object.keys(STATUS_TOKENS).some((t) => lower === t || lower.includes(t))) status++;
+
+      // Name: 2+ words, mostly letters, no digits
+      if (!/\d/.test(v) && /[\u0590-\u05FFa-zA-Z]/.test(v) && v.split(/\s+/).length >= 1 && v.length >= 2 && v.length < 50) {
+        nameLikelihood++;
+      }
+    }
+
+    scores.push({
+      phone: phone / total,
+      count: count / total,
+      side: side / total,
+      status: status / total,
+      nameLikelihood: nameLikelihood / total,
+      avgLen: totalLen / total,
+      nonEmpty: total,
+    });
+  }
+
+  const pickBest = (key: keyof ColScore, threshold: number, exclude: number[]): number => {
+    let best = -1, bestVal = threshold;
+    scores.forEach((s, i) => {
+      if (exclude.includes(i)) return;
+      const v = s[key] as number;
+      if (v > bestVal) { bestVal = v; best = i; }
+    });
+    return best;
+  };
+
+  types.phone = pickBest('phone', 0.5, []);
+  types.count = pickBest('count', 0.5, [types.phone]);
+  types.status = pickBest('status', 0.4, [types.phone, types.count]);
+  types.side = pickBest('side', 0.4, [types.phone, types.count, types.status]);
+
+  // Name = column with highest name likelihood among remaining
+  const used = [types.phone, types.count, types.status, types.side].filter((x) => x >= 0);
+  types.name = pickBest('nameLikelihood', 0.3, used);
+
+  // Notes = remaining column with longest average text
+  const usedAll = [...used, types.name].filter((x) => x >= 0);
+  let bestNotes = -1, bestLen = 0;
+  scores.forEach((s, i) => {
+    if (usedAll.includes(i)) return;
+    if (s.avgLen > bestLen && s.avgLen >= 5) { bestLen = s.avgLen; bestNotes = i; }
+  });
+  types.notes = bestNotes;
+
+  return types;
+};
+
+const smartParseGuests = (rawRows: string[][]): Omit<Guest, 'id'>[] => {
+  if (!rawRows || rawRows.length === 0) return [];
+  // Drop fully empty rows
+  let rows = rawRows.filter((r) => r.some((c) => c && c.trim()));
+  if (rows.length === 0) return [];
+  // Drop header row if detected
+  if (isProbablyHeader(rows[0])) rows = rows.slice(1);
+  if (rows.length === 0) return [];
+
+  const cols = detectColumnTypes(rows);
+  // Must at least find a name column
+  if (cols.name < 0) return [];
+
+  const out: Omit<Guest, 'id'>[] = [];
+  for (const r of rows) {
+    const name = (r[cols.name] ?? '').trim();
+    if (!name || /\d{4,}/.test(name)) continue; // skip if name is mostly digits
+
+    const phoneRaw = cols.phone >= 0 ? (r[cols.phone] ?? '').trim() : '';
+    const countRaw = cols.count >= 0 ? (r[cols.count] ?? '').trim() : '';
+    const sideRaw = cols.side >= 0 ? (r[cols.side] ?? '').trim().toLowerCase() : '';
+    const statusRaw = cols.status >= 0 ? (r[cols.status] ?? '').trim().toLowerCase() : '';
+    const notesRaw = cols.notes >= 0 ? (r[cols.notes] ?? '').trim() : '';
+
+    let side: Guest['side'] = 'משותף';
+    for (const [key, val] of Object.entries(SIDE_MAP)) {
+      if (sideRaw.includes(key)) { side = val; break; }
+    }
+
+    let status: Guest['status'] = 'ממתין';
+    for (const [key, val] of Object.entries(STATUS_TOKENS)) {
+      if (statusRaw === key || statusRaw.includes(key)) { status = val; break; }
+    }
+
+    out.push({
+      name,
+      phone: phoneRaw,
+      numberOfGuests: parseInt(countRaw) || 1,
+      side,
+      status,
+      notes: notesRaw,
+    });
+  }
+  return out;
+};
+
 const Guests = () => {
   const [guests, setGuests] = useSupabaseTable<Guest>('guests');
   const [form, setForm] = useState<Omit<Guest, 'id'>>(emptyGuest);
@@ -105,6 +253,7 @@ const Guests = () => {
               onImport={handleImport}
               columnMapping={guestColumnMapping}
               parseRow={parseGuestRow}
+              smartParse={smartParseGuests}
               label="מוזמנים"
               templateHeaders={['שם', 'טלפון', 'מספר אורחים', 'צד', 'סטטוס', 'הערות']}
             />

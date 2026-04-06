@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Users, Truck, Calendar, MapPin, Heart } from 'lucide-react';
+import { Users, Truck, Calendar, MapPin, Heart, Wallet, ArrowLeft } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import WeddingHeader from '@/components/WeddingHeader';
@@ -63,15 +63,17 @@ const Index = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'סה״כ מוזמנים', value: guests.length, icon: Users, gradient: 'from-primary/10 to-primary/5' },
-            { label: 'מאשרים הגעה', value: totalAttending, icon: Heart, gradient: 'from-secondary/60 to-secondary/30' },
-            { label: 'ספקים', value: vendors.length, icon: Truck, gradient: 'from-accent/60 to-accent/30' },
-            { label: 'תקציב', value: `₪${totalBudget.toLocaleString()}`, icon: Truck, gradient: 'from-gold-light to-gold-light/50' },
+            { label: 'סה״כ מוזמנים', value: guests.length, icon: Users, gradient: 'from-primary/10 to-primary/5', iconColor: 'text-primary' },
+            { label: 'מאשרים הגעה', value: totalAttending, icon: Heart, gradient: 'from-secondary/60 to-secondary/30', iconColor: 'text-sage-dark' },
+            { label: 'ספקים', value: vendors.length, icon: Truck, gradient: 'from-accent/60 to-accent/30', iconColor: 'text-accent-foreground' },
+            { label: 'תקציב', value: `₪${totalBudget.toLocaleString()}`, icon: Wallet, gradient: 'from-gold-light to-gold-light/50', iconColor: 'text-primary' },
           ].map((stat) => (
-            <Card key={stat.label} className="border-border/50 overflow-hidden">
-              <CardContent className={`flex flex-col items-center py-6 gap-1.5 bg-gradient-to-b ${stat.gradient}`}>
-                <stat.icon className="h-5 w-5 text-primary/70 mb-1" />
-                <p className="text-2xl font-display">{stat.value}</p>
+            <Card key={stat.label} className="border-border/50 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 group">
+              <CardContent className={`flex flex-col items-center py-6 gap-1.5 bg-gradient-to-b ${stat.gradient} relative`}>
+                <div className="h-9 w-9 rounded-full bg-card/80 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform duration-300">
+                  <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+                </div>
+                <p className="text-2xl font-display tabular-nums">{stat.value}</p>
                 <p className="text-xs text-muted-foreground font-body">{stat.label}</p>
               </CardContent>
             </Card>
@@ -100,19 +102,29 @@ const Index = () => {
         <div className="grid grid-cols-2 gap-3">
           <Button
             onClick={() => navigate('/guests')}
-            className="h-14 text-base gap-2 rounded-xl"
+            className="h-16 text-base gap-3 rounded-xl bg-card/70 backdrop-blur-sm border-border/60 hover:bg-card hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 justify-between px-5 group"
             variant="outline"
           >
-            <Users className="h-5 w-5" />
-            ניהול מוזמנים
+            <span className="flex items-center gap-3">
+              <span className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                <Users className="h-4 w-4 text-primary" />
+              </span>
+              <span className="font-body">ניהול מוזמנים</span>
+            </span>
+            <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all" />
           </Button>
           <Button
             onClick={() => navigate('/vendors')}
-            className="h-14 text-base gap-2 rounded-xl"
+            className="h-16 text-base gap-3 rounded-xl bg-card/70 backdrop-blur-sm border-border/60 hover:bg-card hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 justify-between px-5 group"
             variant="outline"
           >
-            <Truck className="h-5 w-5" />
-            ניהול ספקים
+            <span className="flex items-center gap-3">
+              <span className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                <Truck className="h-4 w-4 text-primary" />
+              </span>
+              <span className="font-body">ניהול ספקים</span>
+            </span>
+            <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:-translate-x-1 transition-all" />
           </Button>
         </div>
       </main>

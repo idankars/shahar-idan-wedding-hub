@@ -15,13 +15,17 @@ interface FileImportProps<T> {
   parseRow: (row: Record<string, string>) => T | null;
   label: string;
   templateHeaders: string[];
+  /** Optional: smart parser that takes raw 2D rows (incl. potential header) and returns parsed items.
+   *  Used as a fallback when the standard column-mapping pass produces no results. */
+  smartParse?: (rows: string[][]) => T[];
 }
 
-function FileImport<T>({ onImport, columnMapping, parseRow, label, templateHeaders }: FileImportProps<T>) {
+function FileImport<T>({ onImport, columnMapping, parseRow, label, templateHeaders, smartParse }: FileImportProps<T>) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<T[]>([]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
+  const [usedSmart, setUsedSmart] = useState(false);
 
   const findColumn = (headers: string[], aliases: string[]): string | null => {
     for (const h of headers) {
@@ -35,6 +39,7 @@ function FileImport<T>({ onImport, columnMapping, parseRow, label, templateHeade
     const file = e.target.files?.[0];
     if (!file) return;
     setError('');
+    setUsedSmart(false);
 
     const reader = new FileReader();
     reader.onload = (evt) => {
@@ -43,13 +48,15 @@ function FileImport<T>({ onImport, columnMapping, parseRow, label, templateHeade
         const workbook = XLSX.read(data, { type: 'array' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' });
+        // Also raw 2D for smart fallback (no header assumption)
+        const raw = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, defval: '' }) as string[][];
 
-        if (json.length === 0) {
+        if (json.length === 0 && raw.length === 0) {
           setError('הקובץ ריק');
           return;
         }
 
-        const headers = Object.keys(json[0]);
+        const headers = json.length > 0 ? Object.keys(json[0]) : [];
         const mapping: Record<string, string> = {};
 
         for (const [field, aliases] of Object.entries(columnMapping)) {
@@ -57,7 +64,7 @@ function FileImport<T>({ onImport, columnMapping, parseRow, label, templateHeade
           if (found) mapping[field] = found;
         }
 
-        const parsed = json
+        let parsed: T[] = json
           .map((row) => {
             const mapped: Record<string, string> = {};
             for (const [field, header] of Object.entries(mapping)) {
@@ -66,6 +73,12 @@ function FileImport<T>({ onImport, columnMapping, parseRow, label, templateHeade
             return parseRow(mapped);
           })
           .filter(Boolean) as T[];
+
+        // Fallback: smart auto-detection if standard parse failed
+        if (parsed.length === 0 && smartParse) {
+          parsed = smartParse(raw.map((r) => r.map((c) => String(c ?? '').trim())));
+          if (parsed.length > 0) setUsedSmart(true);
+        }
 
         if (parsed.length === 0) {
           setError('לא נמצאו שורות תקינות בקובץ. ודאו שהעמודות מתאימות.');
@@ -109,7 +122,7 @@ function FileImport<T>({ onImport, columnMapping, parseRow, label, templateHeade
         </DialogHeader>
         <div className="space-y-4 py-4">
           <p className="text-sm text-muted-foreground">
-            העלו קובץ Excel (.xlsx) או CSV עם נתוני {label}. המערכת תזהה אוטומטית את העמודות.
+            העלו קובץ Excel (.xlsx) או CSV עם נתוני {label}. המערכת תזהה אוטומטית את העמודות{smartParse ? ' — אפילו אם הקובץ לא במבנה הסטנדרטי' : ''}.
           </p>
 
           <div className="border-2 border-dashed border-border rounded-xl p-6 text-center hover:border-primary/50 transition-colors">
@@ -136,10 +149,15 @@ function FileImport<T>({ onImport, columnMapping, parseRow, label, templateHeade
           )}
 
           {preview.length > 0 && (
-            <div className="bg-secondary/50 p-4 rounded-lg">
+            <div className="bg-secondary/50 p-4 rounded-lg space-y-1">
               <p className="text-sm font-medium text-secondary-foreground">
                 ✓ נמצאו {preview.length} רשומות תקינות לייבוא
               </p>
+              {usedSmart && (
+                <p className="text-xs text-muted-foreground">
+                  ✨ זוהה אוטומטית — הקובץ לא היה במבנה הסטנדרטי, המערכת ניחשה את העמודות לבד
+                </p>
+              )}
             </div>
           )}
 
