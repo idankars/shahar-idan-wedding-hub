@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Plus, Trash2, Edit2, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Trash2, Edit2, Search, ArrowDownAZ, Clock, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,24 @@ import WeddingNav from '@/components/WeddingNav';
 import FileImport from '@/components/FileImport';
 import { useSupabaseTable } from '@/hooks/useSupabaseTable';
 import type { Guest } from '@/types/wedding';
+import { defaultSides } from '@/types/wedding';
+
+const CUSTOM_SIDES_KEY = 'wedding-custom-sides';
+const loadCustomSides = (): string[] => {
+  try {
+    const raw = localStorage.getItem(CUSTOM_SIDES_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+};
+const saveCustomSides = (sides: string[]) => {
+  try {
+    localStorage.setItem(CUSTOM_SIDES_KEY, JSON.stringify(sides));
+  } catch {
+    // ignore
+  }
+};
 
 const emptyGuest: Omit<Guest, 'id'> = {
   name: '', phone: '', numberOfGuests: 1, side: 'משותף', status: 'ממתין', notes: '',
@@ -34,13 +52,12 @@ const guestColumnMapping = {
 
 const parseGuestRow = (row: Record<string, string>): Omit<Guest, 'id'> | null => {
   if (!row.name) return null;
-  const sideMap: Record<string, Guest['side']> = { 'חתן': 'חתן', 'כלה': 'כלה', 'משותף': 'משותף' };
   const statusMap: Record<string, Guest['status']> = { 'ממתין': 'ממתין', 'מאשר': 'מאשר', 'לא מגיע': 'לא מגיע' };
   return {
     name: row.name,
     phone: row.phone || '',
     numberOfGuests: parseInt(row.numberOfGuests) || 1,
-    side: sideMap[row.side] || 'משותף',
+    side: row.side?.trim() || 'משותף',
     status: statusMap[row.status] || 'ממתין',
     notes: row.notes || '',
   };
@@ -50,13 +67,13 @@ const parseGuestRow = (row: Record<string, string>): Omit<Guest, 'id'> | null =>
 // Sniffs values column-by-column and figures out which one is name/phone/etc.
 // Works even when there are no headers, headers are weird, or columns are reordered.
 const PHONE_RE = /(?:\+?972[-\s]?|0)5\d[-\s]?\d{3}[-\s]?\d{4}|^\d{9,11}$/;
-const SIDE_TOKENS = ['חתן', 'כלה', 'משותף', 'groom', 'bride', 'shared'];
+const SIDE_TOKENS = ['חתן', 'כלה', 'משותף', 'הורי', 'groom', 'bride', 'shared', 'parents'];
 const STATUS_TOKENS: Record<string, Guest['status']> = {
   'מאשר': 'מאשר', 'מאשרים': 'מאשר', 'מגיע': 'מאשר', 'מאושר': 'מאשר', 'כן': 'מאשר', 'yes': 'מאשר', 'confirmed': 'מאשר', 'v': 'מאשר', '✓': 'מאשר',
   'לא': 'לא מגיע', 'לא מגיע': 'לא מגיע', 'מסרב': 'לא מגיע', 'no': 'לא מגיע', 'declined': 'לא מגיע', 'x': 'לא מגיע',
   'ממתין': 'ממתין', 'אולי': 'ממתין', 'maybe': 'ממתין', 'pending': 'ממתין', '?': 'ממתין',
 };
-const SIDE_MAP: Record<string, Guest['side']> = {
+const SIDE_MAP: Record<string, string> = {
   'חתן': 'חתן', 'groom': 'חתן',
   'כלה': 'כלה', 'bride': 'כלה',
   'משותף': 'משותף', 'shared': 'משותף', 'both': 'משותף', 'משותפים': 'משותף',
@@ -172,7 +189,7 @@ const smartParseGuests = (rawRows: string[][]): Omit<Guest, 'id'>[] => {
     const statusRaw = cols.status >= 0 ? (r[cols.status] ?? '').trim().toLowerCase() : '';
     const notesRaw = cols.notes >= 0 ? (r[cols.notes] ?? '').trim() : '';
 
-    let side: Guest['side'] = 'משותף';
+    let side: string = sideRaw || 'משותף';
     for (const [key, val] of Object.entries(SIDE_MAP)) {
       if (sideRaw.includes(key)) { side = val; break; }
     }
@@ -200,6 +217,37 @@ const Guests = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [sortAlpha, setSortAlpha] = useState(false);
+  const [customSides, setCustomSides] = useState<string[]>(() => loadCustomSides());
+  const [newSideOpen, setNewSideOpen] = useState(false);
+  const [newSideName, setNewSideName] = useState('');
+
+  // Persist custom sides to localStorage
+  useEffect(() => {
+    saveCustomSides(customSides);
+  }, [customSides]);
+
+  // All available sides = defaults + custom + any unique sides found in existing guests
+  const allSides = useMemo(() => {
+    const set = new Set<string>([...defaultSides, ...customSides]);
+    guests.forEach((g) => g.side && set.add(g.side));
+    return Array.from(set);
+  }, [customSides, guests]);
+
+  const handleAddCustomSide = () => {
+    const name = newSideName.trim();
+    if (!name) return;
+    if (!customSides.includes(name) && !defaultSides.includes(name as typeof defaultSides[number])) {
+      setCustomSides([...customSides, name]);
+    }
+    setForm((f) => ({ ...f, side: name }));
+    setNewSideName('');
+    setNewSideOpen(false);
+  };
+
+  const handleRemoveCustomSide = (side: string) => {
+    setCustomSides(customSides.filter((s) => s !== side));
+  };
 
   const handleSave = () => {
     if (!form.name.trim()) return;
@@ -229,9 +277,13 @@ const Guests = () => {
     setGuests([...guests, ...newGuests]);
   };
 
-  const filtered = guests.filter((g) =>
-    g.name.includes(search) || g.phone.includes(search)
-  );
+  const filtered = useMemo(() => {
+    const list = guests.filter((g) => g.name.includes(search) || g.phone.includes(search));
+    if (sortAlpha) {
+      return [...list].sort((a, b) => a.name.localeCompare(b.name, 'he'));
+    }
+    return list;
+  }, [guests, search, sortAlpha]);
 
   const totalAttending = guests.filter(g => g.status === 'מאשר').reduce((s, g) => s + g.numberOfGuests, 0);
 
@@ -284,12 +336,24 @@ const Guests = () => {
                     </div>
                     <div className="grid gap-2">
                       <Label>צד</Label>
-                      <Select value={form.side} onValueChange={(v) => setForm({ ...form, side: v as Guest['side'] })}>
+                      <Select
+                        value={form.side}
+                        onValueChange={(v) => {
+                          if (v === '__add__') {
+                            setNewSideOpen(true);
+                          } else {
+                            setForm({ ...form, side: v });
+                          }
+                        }}
+                      >
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="חתן">חתן</SelectItem>
-                          <SelectItem value="כלה">כלה</SelectItem>
-                          <SelectItem value="משותף">משותף</SelectItem>
+                          {allSides.map((s) => (
+                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                          ))}
+                          <SelectItem value="__add__" className="text-primary">
+                            + הוסף קטגוריה חדשה
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -321,14 +385,25 @@ const Guests = () => {
           </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="חיפוש לפי שם או טלפון..."
-            className="pr-10"
-          />
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="חיפוש לפי שם או טלפון..."
+              className="pr-10"
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setSortAlpha(!sortAlpha)}
+            className="gap-2 shrink-0"
+            title={sortAlpha ? 'מסודר לפי א-ב — לחץ לסידור לפי הוספה' : 'לחץ לסידור לפי א-ב'}
+          >
+            {sortAlpha ? <ArrowDownAZ className="h-4 w-4 text-primary" /> : <Clock className="h-4 w-4" />}
+            <span className="hidden sm:inline text-sm">{sortAlpha ? 'א-ב' : 'לפי הוספה'}</span>
+          </Button>
         </div>
 
         <div className="space-y-2">
@@ -346,7 +421,7 @@ const Guests = () => {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium">{guest.name}</p>
                     <Badge variant="outline" className={statusColors[guest.status]}>{guest.status}</Badge>
-                    <Badge variant="outline" className="text-xs">{guest.side}</Badge>
+                    <Badge variant="outline" className="text-xs bg-primary/5">{guest.side}</Badge>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
                     {guest.phone && <span dir="ltr">{guest.phone}</span>}
@@ -367,6 +442,56 @@ const Guests = () => {
           ))}
         </div>
       </main>
+
+      {/* Add custom side dialog */}
+      <Dialog open={newSideOpen} onOpenChange={setNewSideOpen}>
+        <DialogContent className="font-body sm:max-w-sm" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="font-display">קטגוריית צד חדשה</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid gap-2">
+              <Label>שם הקטגוריה</Label>
+              <Input
+                value={newSideName}
+                onChange={(e) => setNewSideName(e.target.value)}
+                placeholder="לדוגמה: דודים שחר, חברי עבודה..."
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddCustomSide(); }}
+                autoFocus
+              />
+            </div>
+            {customSides.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">קטגוריות מותאמות קיימות</Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {customSides.map((s) => (
+                    <Badge
+                      key={s}
+                      variant="outline"
+                      className="gap-1 pr-2 pl-1 py-1 bg-primary/5 hover:bg-primary/10 transition-colors"
+                    >
+                      {s}
+                      <button
+                        onClick={() => handleRemoveCustomSide(s)}
+                        className="rounded-full hover:bg-destructive/20 p-0.5"
+                        title="הסר"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline">ביטול</Button>
+            </DialogClose>
+            <Button onClick={handleAddCustomSide} disabled={!newSideName.trim()}>הוסף</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

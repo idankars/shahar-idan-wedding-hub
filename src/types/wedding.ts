@@ -3,10 +3,12 @@ export interface Guest {
   name: string;
   phone: string;
   numberOfGuests: number;
-  side: 'חתן' | 'כלה' | 'משותף';
+  side: string;
   status: 'ממתין' | 'מאשר' | 'לא מגיע';
   notes: string;
 }
+
+export const defaultSides = ['חתן', 'כלה', 'משותף', 'הורי שחר', 'הורי עידן'] as const;
 
 export interface Vendor {
   id: string;
