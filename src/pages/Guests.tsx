@@ -501,7 +501,8 @@ const Guests = () => {
     return list;
   }, [guests, search, sortAlpha]);
 
-  const totalAttending = guests.filter(g => g.status === 'מאשר').reduce((s, g) => s + g.numberOfGuests, 0);
+  const totalAttending = guests.filter(g => g.status === 'מאשר').reduce((s, g) => s + (g.numberOfGuests || 1), 0);
+  const totalPeople = guests.reduce((s, g) => s + (g.numberOfGuests || 1), 0);
 
   return (
     <div className="min-h-screen">
@@ -513,7 +514,7 @@ const Guests = () => {
           <div>
             <h2 className="text-2xl font-display">רשימת מוזמנים</h2>
             <p className="text-sm text-muted-foreground font-body">
-              {guests.length} מוזמנים · {totalAttending} מאשרים הגעה
+              {guests.length} שורות · {totalPeople} סה״כ אנשים · {totalAttending} מאשרים הגעה
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">

@@ -13,7 +13,8 @@ const Index = () => {
   const [vendors] = useSupabaseTable<Vendor>('vendors');
 
   const confirmedGuests = guests.filter((g) => g.status === 'מאשר');
-  const totalAttending = confirmedGuests.reduce((sum, g) => sum + g.numberOfGuests, 0);
+  const totalAttending = confirmedGuests.reduce((sum, g) => sum + (g.numberOfGuests || 1), 0);
+  const totalInvited = guests.reduce((sum, g) => sum + (g.numberOfGuests || 1), 0);
   const totalBudget = vendors.reduce((sum, v) => sum + v.price, 0);
   const paidTotal = vendors.reduce((s, v) => s + (v.paid ?? 0), 0);
 
@@ -63,7 +64,7 @@ const Index = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'סה״כ מוזמנים', value: guests.length, icon: Users, gradient: 'from-primary/10 to-primary/5', iconColor: 'text-primary' },
+            { label: 'סה״כ מוזמנים', value: totalInvited, icon: Users, gradient: 'from-primary/10 to-primary/5', iconColor: 'text-primary' },
             { label: 'מאשרים הגעה', value: totalAttending, icon: Heart, gradient: 'from-secondary/60 to-secondary/30', iconColor: 'text-sage-dark' },
             { label: 'ספקים', value: vendors.length, icon: Truck, gradient: 'from-accent/60 to-accent/30', iconColor: 'text-accent-foreground' },
             { label: 'תקציב', value: `₪${totalBudget.toLocaleString()}`, icon: Wallet, gradient: 'from-gold-light to-gold-light/50', iconColor: 'text-primary' },
