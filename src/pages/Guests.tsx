@@ -425,7 +425,7 @@ const Guests = () => {
       <WeddingHeader />
       <WeddingNav />
 
-      <main className="container max-w-4xl mx-auto py-8 px-4 space-y-6">
+      <main className={`container mx-auto py-8 px-4 space-y-6 ${viewMode === 'table' ? 'max-w-none' : 'max-w-4xl'}`}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h2 className="text-2xl font-display">רשימת מוזמנים</h2>
@@ -753,6 +753,13 @@ const Guests = () => {
                   </div>
                 );
               })}
+              <button
+                onClick={() => setNewSideOpen(true)}
+                className="w-64 shrink-0 rounded-xl border-2 border-dashed border-border/60 hover:border-primary/50 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary min-h-[200px]"
+              >
+                <Plus className="h-6 w-6" />
+                <span className="text-sm font-medium">הוסף קטגוריה</span>
+              </button>
             </div>
           </div>
         )}
